@@ -236,7 +236,7 @@ def analyze_references(
     console.print("[cyan]Analyzing reference images...[/cyan]")
 
     response = client.models.generate_content(
-        model="gemini-2.5-flash-preview-05-20",
+        model="gemini-2.5-flash",
         contents=[{"parts": parts}],
         config=genai.types.GenerateContentConfig(
             temperature=0.3,
