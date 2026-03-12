@@ -1,54 +1,101 @@
-"""Stage 1: Generate letter images using Gemini Imagen 3 API."""
+"""Stage 1: Generate letter images using analyzed style template.
+
+Two modes:
+  A) Reference-based: analyze folder → master prompt → generate all letters
+  B) Direct prompt: manual style prompt (legacy, backward-compatible)
+"""
+import base64
+import json
 import os
-import asyncio
+import time
 from pathlib import Path
+
 from google import genai
 from rich.console import Console
 from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn
 
 from config.settings import (
-    GEMINI_API_KEY, IMAGEN_MODEL, CHARSET, UPPERCASE, IMAGE_SIZE, OUTPUT_DIR
+    GEMINI_API_KEY, IMAGEN_MODEL, CHARSET, UPPERCASE, DIGITS,
+    IMAGE_SIZE, OUTPUT_DIR
+)
+from scripts.analyze import (
+    analyze_references, build_letter_prompt, encode_image,
+    LETTER_INTERACTIONS, FONT_KNOWLEDGE
 )
 
 console = Console()
 
+# Characters to generate (uppercase + digits first)
+DEFAULT_CHARSET = UPPERCASE + DIGITS
 
-def get_prompt(letter: str, style: str) -> str:
-    """Build generation prompt for a single letter."""
+
+def get_simple_prompt(letter: str, style: str) -> str:
+    """Build simple prompt (legacy mode, no reference)."""
+    interaction = LETTER_INTERACTIONS.get(letter, f"artistic decoration following the letter geometry")
     return (
-        f"The letter {letter} in {style} style, "
-        f"isolated on pure white background, centered, "
-        f"high detail, square composition, no other text or objects"
+        f"A single letter '{letter}' in {style} style. "
+        f"The artistic elements: {interaction}. "
+        f"Isolated on pure white background, centered, square composition, "
+        f"high detail, the letter must be clearly readable. "
+        f"ONLY the letter '{letter}', no other text or characters."
+        f"\n\n{FONT_KNOWLEDGE}"
     )
 
 
 def generate_font_images(
     style: str,
     font_name: str,
-    charset: str = UPPERCASE,
+    charset: str | None = None,
     output_dir: Path | None = None,
+    ref_dir: str | Path | None = None,
+    analysis: dict | None = None,
     retries: int = 2,
 ) -> Path:
-    """Generate all letter images for a font style.
+    """Generate all letter images for a font.
 
     Args:
-        style: Style description (e.g. "botanical floral watercolor")
-        font_name: Name for the font (used as folder name)
-        charset: Characters to generate
+        style: Style description (used if no ref_dir/analysis)
+        font_name: Font name (folder name)
+        charset: Characters to generate (default: A-Z + 0-9)
         output_dir: Override output directory
-        retries: Number of retries per failed letter
+        ref_dir: Path to reference images folder (triggers analysis mode)
+        analysis: Pre-computed analysis result (skip re-analysis)
+        retries: Retries per failed letter
 
     Returns:
-        Path to the generated images directory
+        Path to generated images directory
     """
     if not GEMINI_API_KEY:
         console.print("[red]ERROR: GEMINI_API_KEY not set in .env[/red]")
         raise SystemExit(1)
 
-    client = genai.Client(api_key=GEMINI_API_KEY)
-    img_dir = (output_dir or OUTPUT_DIR) / font_name / "images"
+    charset = charset or DEFAULT_CHARSET
+    base_dir = (output_dir or OUTPUT_DIR) / font_name
+    img_dir = base_dir / "images"
     img_dir.mkdir(parents=True, exist_ok=True)
 
+    # ── Mode A: Reference-based (analyze → template → generate)
+    master_prompt = None
+    ref_images_b64 = []
+
+    if ref_dir or analysis:
+        if not analysis:
+            console.print(f"\n[bold cyan]Analyzing reference images: {ref_dir}[/bold cyan]")
+            analysis = analyze_references(ref_dir, font_name)
+
+        master_prompt = analysis.get("master_prompt_with_font_knowledge") or analysis.get("master_prompt", "")
+        console.print(f"[green]Using style: {analysis.get('style_name_en', 'analyzed')}[/green]")
+        console.print(f"[dim]Material: {analysis.get('material_keyword')} | Mood: {analysis.get('mood_keyword')}[/dim]")
+
+        # Load reference images for visual guidance
+        if ref_dir:
+            ref_path = Path(ref_dir)
+            for ext in ["*.png", "*.jpg", "*.jpeg", "*.webp"]:
+                for f in sorted(ref_path.glob(ext))[:3]:  # Max 3 ref images
+                    b64, mime = encode_image(f)
+                    ref_images_b64.append((b64, mime))
+
+    client = genai.Client(api_key=GEMINI_API_KEY)
     failed = []
 
     with Progress(
@@ -72,11 +119,17 @@ def generate_font_images(
                 progress.advance(task)
                 continue
 
-            prompt = get_prompt(char, style)
+            # Build prompt
+            if master_prompt:
+                prompt = build_letter_prompt(master_prompt, char)
+            else:
+                prompt = get_simple_prompt(char, style)
+
             success = False
 
             for attempt in range(retries + 1):
                 try:
+                    # Generate with Imagen 3
                     response = client.models.generate_images(
                         model=IMAGEN_MODEL,
                         prompt=prompt,
@@ -95,7 +148,14 @@ def generate_font_images(
                         console.print(f"[yellow]No image for '{char}' (attempt {attempt+1})[/yellow]")
 
                 except Exception as e:
-                    console.print(f"[yellow]Error '{char}' attempt {attempt+1}: {e}[/yellow]")
+                    err_msg = str(e)
+                    if "429" in err_msg or "quota" in err_msg.lower():
+                        console.print(f"[yellow]Rate limited, waiting 10s...[/yellow]")
+                        time.sleep(10)
+                    else:
+                        console.print(f"[yellow]Error '{char}' attempt {attempt+1}: {e}[/yellow]")
+
+                time.sleep(1)  # Small delay between calls
 
             if not success:
                 failed.append(char)
@@ -113,8 +173,22 @@ def generate_font_images(
 
 if __name__ == "__main__":
     import sys
-    if len(sys.argv) < 3:
-        print("Usage: python generate.py <style> <font_name>")
-        print('Example: python generate.py "botanical floral watercolor" BotanicalBloom')
+    args = sys.argv[1:]
+    if not args:
+        print("Usage:")
+        print("  Reference mode: python generate.py --ref <folder> --name <FontName>")
+        print("  Direct mode:    python generate.py --style 'botanical floral' --name <FontName>")
         sys.exit(1)
-    generate_font_images(sys.argv[1], sys.argv[2])
+
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--ref", help="Reference images folder")
+    parser.add_argument("--style", help="Style description (direct mode)")
+    parser.add_argument("--name", required=True, help="Font name")
+    parsed = parser.parse_args(args)
+
+    generate_font_images(
+        style=parsed.style or "",
+        font_name=parsed.name,
+        ref_dir=parsed.ref,
+    )

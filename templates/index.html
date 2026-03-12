@@ -180,7 +180,7 @@
             overflow: hidden;
             transition: max-height .3s ease;
         }
-        .create-body.open { max-height: 600px; }
+        .create-body.open { max-height: 900px; }
         .create-inner { padding: 0 20px 20px; }
 
         /* Categories */
@@ -467,6 +467,58 @@
             font-weight: 600;
             letter-spacing: 0.3px;
         }
+        /* Mode switcher */
+        .mode-switch { display: flex; gap: 0; margin-bottom: 16px; border: 1px solid var(--border); border-radius: var(--radius-sm); overflow: hidden; width: fit-content; }
+        .mode-btn {
+            padding: 10px 24px; font-size: 13px; font-weight: 600; border: none; background: transparent;
+            color: var(--text3); cursor: pointer; font-family: inherit; transition: all .15s;
+        }
+        .mode-btn.active { background: var(--accent); color: #fff; }
+        .mode-btn:not(.active):hover { background: var(--surface2); color: var(--text2); }
+
+        /* Ref upload area */
+        .ref-upload {
+            border: 2px dashed var(--border2); border-radius: var(--radius);
+            padding: 20px; text-align: center; cursor: pointer;
+            transition: all .2s; margin-bottom: 16px; position: relative;
+        }
+        .ref-upload:hover, .ref-upload.dragover { border-color: var(--accent); background: var(--accent-glow); }
+        .ref-upload input[type="file"] { display: none; }
+        .ref-upload .label { font-size: 13px; color: var(--text3); }
+        .ref-upload .label b { color: var(--accent2); }
+        .ref-thumbs { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+        .ref-thumb {
+            width: 72px; height: 72px; border-radius: 8px; overflow: hidden;
+            border: 1px solid var(--border); position: relative;
+        }
+        .ref-thumb img { width: 100%; height: 100%; object-fit: cover; }
+        .ref-thumb .remove {
+            position: absolute; top: 2px; right: 2px; width: 18px; height: 18px;
+            background: rgba(0,0,0,.7); color: #fff; border: none; border-radius: 50%;
+            font-size: 10px; cursor: pointer; display: flex; align-items: center; justify-content: center;
+        }
+        .ref-path-field { margin-bottom: 16px; }
+        .ref-path-field input {
+            width: 100%; background: var(--bg); border: 1px solid var(--border);
+            color: var(--text); padding: 10px 14px; border-radius: var(--radius-sm);
+            font-size: 14px; font-family: inherit; outline: none;
+        }
+        .ref-path-field input:focus { border-color: var(--accent); }
+        .ref-path-field label { font-size: 11px; font-weight: 600; color: var(--text3); text-transform: uppercase; letter-spacing: 0.8px; display: block; margin-bottom: 6px; }
+
+        /* Analysis preview card */
+        .analysis-card {
+            background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius);
+            padding: 16px; margin-bottom: 16px;
+        }
+        .analysis-card h4 { font-size: 13px; font-weight: 600; color: var(--accent2); margin-bottom: 10px; }
+        .analysis-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 8px; }
+        .analysis-item { font-size: 12px; }
+        .analysis-item .al { color: var(--text3); }
+        .analysis-item .av { color: var(--text); }
+        .color-dots { display: flex; gap: 4px; margin-top: 4px; }
+        .color-dot { width: 18px; height: 18px; border-radius: 4px; border: 1px solid var(--border); }
+
         .badge-done { background: var(--green-bg); color: var(--green); }
         .badge-running { background: var(--blue-bg); color: var(--blue); }
         .badge-generated { background: var(--yellow-bg); color: var(--yellow); }
@@ -785,7 +837,38 @@
         </div>
         <div class="create-body" id="createBody">
             <div class="create-inner">
-                <div class="cat-grid" id="catGrid"></div>
+                <!-- Mode Switch -->
+                <div class="mode-switch">
+                    <button class="mode-btn active" data-mode="ref" onclick="setMode('ref')">Reference Images</button>
+                    <button class="mode-btn" data-mode="prompt" onclick="setMode('prompt')">Direct Prompt</button>
+                </div>
+
+                <!-- Mode: Reference -->
+                <div id="modeRef">
+                    <div class="ref-upload" id="refUpload" onclick="document.getElementById('refFiles').click()">
+                        <input type="file" id="refFiles" multiple accept="image/*" onchange="handleRefUpload(event)">
+                        <div class="label">
+                            Keo tha hoac <b>click de chon</b> anh tham chieu (1-10 anh mau phong cach)<br>
+                            <span style="font-size:11px;color:var(--text3)">PNG, JPG, WEBP — Anh cac chu cai mau hoac artwork phong cach muon tao font</span>
+                        </div>
+                        <div class="ref-thumbs" id="refThumbs"></div>
+                    </div>
+                    <div class="ref-path-field">
+                        <label>Hoac nhap duong dan folder tren Mac</label>
+                        <input type="text" id="fRefDir" placeholder="VD: ~/Desktop/ref_botanical hoac /Users/duchieu/Desktop/anh tony ai art/361arts-001">
+                    </div>
+                </div>
+
+                <!-- Mode: Direct Prompt -->
+                <div id="modePrompt" style="display:none">
+                    <div class="cat-grid" id="catGrid"></div>
+                    <div class="field full" style="margin-bottom:14px">
+                        <label>Style Prompt</label>
+                        <textarea id="fStyle" placeholder="Mo ta chi tiet style: material, lighting, color palette, texture, mood..."></textarea>
+                    </div>
+                </div>
+
+                <!-- Common fields -->
                 <div class="form-grid">
                     <div class="field">
                         <label>Ten Font</label>
@@ -795,23 +878,32 @@
                         <label>Family Name</label>
                         <input type="text" id="fFamily" placeholder="Tu tao neu de trong">
                     </div>
-                    <div class="field full">
-                        <label>Style Prompt</label>
-                        <textarea id="fStyle" placeholder="Mo ta style cho Imagen 3 API..."></textarea>
-                    </div>
                 </div>
+
+                <!-- Analysis result preview (shown after analyze) -->
+                <div class="analysis-card" id="analysisCard" style="display:none">
+                    <h4>Style Analysis Result</h4>
+                    <div id="analysisContent"></div>
+                </div>
+
                 <div class="form-footer">
                     <div class="skip-row">
+                        <label class="skip-item"><input type="checkbox" id="sk0"> Skip Analyze</label>
                         <label class="skip-item"><input type="checkbox" id="sk1"> Skip Generate</label>
                         <label class="skip-item"><input type="checkbox" id="sk2"> Skip Process</label>
                         <label class="skip-item"><input type="checkbox" id="sk3"> Skip Assemble</label>
                         <label class="skip-item"><input type="checkbox" id="sk4"> Skip QA</label>
                         <label class="skip-item"><input type="checkbox" id="sk5"> Skip Mockup</label>
                     </div>
-                    <button class="btn btn-primary" id="btnRun" onclick="startPipeline()">
-                        <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M4 2l10 6-10 6z"/></svg>
-                        Chay Pipeline
-                    </button>
+                    <div style="display:flex;gap:8px">
+                        <button class="btn btn-ghost" id="btnAnalyze" onclick="analyzeOnly()">
+                            Analyze Style
+                        </button>
+                        <button class="btn btn-primary" id="btnRun" onclick="startPipeline()">
+                            <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M4 2l10 6-10 6z"/></svg>
+                            Chay Pipeline
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -859,6 +951,8 @@ let prompts = {};
 let pollers = {};
 let currentFilter = 'all';
 let currentDetail = null;
+let createMode = 'ref'; // 'ref' | 'prompt'
+let uploadedRefFiles = []; // File objects for upload
 
 const STAGES = ['generate','process','assemble','qa','mockup'];
 const STAGE_LABELS = {generate:'Gen',process:'Process',assemble:'Build',qa:'QA',mockup:'Mock'};
@@ -995,6 +1089,135 @@ function buildCard(font) {
     return card;
 }
 
+// ═══ MODE SWITCH ═══
+function setMode(mode) {
+    createMode = mode;
+    document.querySelectorAll('.mode-btn').forEach(b => b.classList.toggle('active', b.dataset.mode === mode));
+    document.getElementById('modeRef').style.display = mode === 'ref' ? 'block' : 'none';
+    document.getElementById('modePrompt').style.display = mode === 'prompt' ? 'block' : 'none';
+    document.getElementById('btnAnalyze').style.display = mode === 'ref' ? '' : 'none';
+}
+
+// ═══ REFERENCE UPLOAD ═══
+function handleRefUpload(e) {
+    const files = Array.from(e.target.files);
+    uploadedRefFiles = uploadedRefFiles.concat(files);
+    renderRefThumbs();
+}
+
+function renderRefThumbs() {
+    const el = document.getElementById('refThumbs');
+    el.innerHTML = '';
+    uploadedRefFiles.forEach((f, i) => {
+        const thumb = document.createElement('div');
+        thumb.className = 'ref-thumb';
+        const img = document.createElement('img');
+        img.src = URL.createObjectURL(f);
+        const btn = document.createElement('button');
+        btn.className = 'remove';
+        btn.textContent = '×';
+        btn.onclick = (e) => { e.stopPropagation(); uploadedRefFiles.splice(i, 1); renderRefThumbs(); };
+        thumb.appendChild(img);
+        thumb.appendChild(btn);
+        el.appendChild(thumb);
+    });
+}
+
+// Setup drag & drop
+document.addEventListener('DOMContentLoaded', () => {
+    const drop = document.getElementById('refUpload');
+    if (!drop) return;
+    drop.addEventListener('dragover', e => { e.preventDefault(); drop.classList.add('dragover'); });
+    drop.addEventListener('dragleave', () => drop.classList.remove('dragover'));
+    drop.addEventListener('drop', e => {
+        e.preventDefault();
+        drop.classList.remove('dragover');
+        const files = Array.from(e.dataTransfer.files).filter(f => f.type.startsWith('image/'));
+        uploadedRefFiles = uploadedRefFiles.concat(files);
+        renderRefThumbs();
+    });
+});
+
+async function uploadRefsToServer(name) {
+    if (!uploadedRefFiles.length) return false;
+    const fd = new FormData();
+    uploadedRefFiles.forEach(f => fd.append('files', f));
+    const r = await fetch(`/api/fonts/${name}/upload-refs`, {method:'POST', body: fd});
+    const d = await r.json();
+    return d.ok;
+}
+
+// ═══ ANALYZE ONLY ═══
+async function analyzeOnly() {
+    const name = document.getElementById('fName').value.trim();
+    if (!name) return toast('Nhap ten font truoc!', 'error');
+
+    const refDir = document.getElementById('fRefDir').value.trim();
+    if (!uploadedRefFiles.length && !refDir) return toast('Can upload anh hoac nhap folder path!', 'error');
+
+    document.getElementById('btnAnalyze').disabled = true;
+
+    // Upload refs if any
+    if (uploadedRefFiles.length) await uploadRefsToServer(name);
+
+    // If refDir provided, copy to refs (handled server-side, just pass along)
+    const r = await fetch(`/api/fonts/${name}/analyze`, {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ref_dir: refDir || null})
+    });
+    const d = await r.json();
+    document.getElementById('btnAnalyze').disabled = false;
+
+    if (d.error) return toast(d.error, 'error');
+    toast('Dang analyze style...');
+    startPolling(name);
+
+    // Poll for analysis result
+    const poll = setInterval(async () => {
+        const sr = await fetch(`/api/run/${name}/status`);
+        const sd = await sr.json();
+        if (sd.status === 'done') {
+            clearInterval(poll);
+            showAnalysisResult(name);
+        }
+    }, 2000);
+}
+
+async function showAnalysisResult(name) {
+    const r = await fetch(`/api/fonts/${name}`);
+    const d = await r.json();
+    if (!d.analysis) return;
+
+    const card = document.getElementById('analysisCard');
+    const content = document.getElementById('analysisContent');
+    const a = d.analysis;
+
+    let html = '<div class="analysis-grid">';
+    html += `<div class="analysis-item"><span class="al">Style:</span> <span class="av">${a.style_name_en || '?'}</span></div>`;
+    html += `<div class="analysis-item"><span class="al">Material:</span> <span class="av">${a.material_keyword || '?'}</span></div>`;
+    html += `<div class="analysis-item"><span class="al">Mood:</span> <span class="av">${a.mood_keyword || '?'}</span></div>`;
+    html += `<div class="analysis-item"><span class="al">Element:</span> <span class="av">${a.creature_or_element || '?'}</span></div>`;
+    if (a.analysis) {
+        html += `<div class="analysis-item"><span class="al">Art Style:</span> <span class="av">${a.analysis.art_style || '?'}</span></div>`;
+        html += `<div class="analysis-item"><span class="al">Texture:</span> <span class="av">${a.analysis.texture || '?'}</span></div>`;
+    }
+    html += '</div>';
+
+    // Color palette
+    if (a.analysis && a.analysis.colors) {
+        const colors = Array.isArray(a.analysis.colors) ? a.analysis.colors : [];
+        if (colors.length) {
+            html += '<div class="color-dots" style="margin-top:10px">';
+            colors.forEach(c => { html += `<div class="color-dot" style="background:${c}" title="${c}"></div>`; });
+            html += '</div>';
+        }
+    }
+
+    content.innerHTML = html;
+    card.style.display = 'block';
+}
+
 // ═══ CREATE ═══
 function toggleCreate() {
     document.getElementById('createToggle').classList.toggle('open');
@@ -1005,9 +1228,21 @@ async function startPipeline() {
     const name = document.getElementById('fName').value.trim();
     const style = document.getElementById('fStyle').value.trim();
     const family = document.getElementById('fFamily').value.trim();
-    if (!name || !style) return toast('Nhap ten font va style prompt!', 'error');
+    const refDir = document.getElementById('fRefDir').value.trim();
+
+    if (!name) return toast('Nhap ten font!', 'error');
+
+    // Ref mode: need uploads or refDir
+    if (createMode === 'ref' && !uploadedRefFiles.length && !refDir) {
+        return toast('Upload anh tham chieu hoac nhap folder path!', 'error');
+    }
+    // Prompt mode: need style
+    if (createMode === 'prompt' && !style) {
+        return toast('Nhap style prompt!', 'error');
+    }
 
     const skip = [];
+    if (document.getElementById('sk0').checked) skip.push('analyze');
     if (document.getElementById('sk1').checked) skip.push('generate');
     if (document.getElementById('sk2').checked) skip.push('process');
     if (document.getElementById('sk3').checked) skip.push('assemble');
@@ -1015,10 +1250,22 @@ async function startPipeline() {
     if (document.getElementById('sk5').checked) skip.push('mockup');
 
     document.getElementById('btnRun').disabled = true;
+
+    // Upload refs first if in ref mode
+    if (createMode === 'ref' && uploadedRefFiles.length) {
+        await uploadRefsToServer(name);
+    }
+
     const r = await fetch('/api/run', {
         method: 'POST',
         headers: {'Content-Type':'application/json'},
-        body: JSON.stringify({name, style, family: family||null, skip})
+        body: JSON.stringify({
+            name,
+            style: style || '',
+            family: family || null,
+            ref_dir: refDir || '',
+            skip,
+        })
     });
     const d = await r.json();
     document.getElementById('btnRun').disabled = false;
@@ -1065,7 +1312,9 @@ async function openDetail(name) {
 
     // Build tabs
     const tabs = [];
+    if (data.analysis) tabs.push({id:'style', label:'Style Analysis', count:null});
     if (data.preview_font) tabs.push({id:'preview', label:'Preview', count:null});
+    if (data.files.references && data.files.references.length) tabs.push({id:'refs', label:'References', count: data.files.references.length});
     tabs.push({id:'glyphs', label:'Glyphs', count: data.files.images.length});
     if (data.files.mockups.length) tabs.push({id:'mockups', label:'Mockups', count: data.files.mockups.length});
     if (data.files.specimens.length) tabs.push({id:'specimens', label:'Specimens', count: data.files.specimens.length});
@@ -1080,6 +1329,48 @@ async function openDetail(name) {
     // Build tab panels
     const body = document.getElementById('mBody');
     let html = '';
+
+    // ── Style Analysis Tab
+    if (data.analysis) {
+        const a = data.analysis;
+        const firstTab = tabs[0].id === 'style';
+        html += `<div class="tab-panel ${firstTab?'active':''}" id="tp-style">`;
+        html += `<div class="analysis-card" style="display:block;margin-bottom:16px">
+            <h4>Style: ${a.style_name_en||'?'} / ${a.style_name_vi||'?'}</h4>
+            <div class="analysis-grid">
+                <div class="analysis-item"><span class="al">Material:</span> <span class="av">${a.material_keyword||'?'}</span></div>
+                <div class="analysis-item"><span class="al">Mood:</span> <span class="av">${a.mood_keyword||'?'}</span></div>
+                <div class="analysis-item"><span class="al">Element:</span> <span class="av">${a.creature_or_element||'?'}</span></div>
+            </div>`;
+        if (a.analysis) {
+            html += '<div class="analysis-grid" style="margin-top:12px">';
+            for (const [k,v] of Object.entries(a.analysis)) {
+                if (k === 'colors' && Array.isArray(v)) {
+                    html += `<div class="analysis-item" style="grid-column:1/-1"><span class="al">Colors:</span> <div class="color-dots" style="margin-top:4px">${v.map(c=>`<div class="color-dot" style="background:${c}" title="${c}"></div>`).join('')}</div></div>`;
+                } else {
+                    const val = typeof v === 'string' ? v : JSON.stringify(v);
+                    html += `<div class="analysis-item"><span class="al">${k}:</span> <span class="av">${escHtml(val.substring(0,100))}</span></div>`;
+                }
+            }
+            html += '</div>';
+        }
+        html += '</div>';
+        // Master prompt
+        if (a.master_prompt) {
+            html += `<h4 style="font-size:13px;font-weight:600;color:var(--text3);margin-bottom:8px">Master Prompt Template</h4>`;
+            html += `<div class="terminal" style="max-height:200px;color:var(--text2);font-size:11px">${escHtml(a.master_prompt)}</div>`;
+        }
+        html += '</div>';
+    }
+
+    // ── References Tab
+    if (data.files.references && data.files.references.length) {
+        html += `<div class="tab-panel" id="tp-refs"><div class="glyph-grid" style="grid-template-columns:repeat(auto-fill,minmax(120px,1fr))">`;
+        data.files.references.forEach(f => {
+            html += `<div class="glyph-cell" style="aspect-ratio:auto"><img src="${f.url}" loading="lazy" style="padding:0"></div>`;
+        });
+        html += '</div></div>';
+    }
 
     // ── Preview Tab
     if (data.preview_font) {

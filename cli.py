@@ -32,7 +32,8 @@ def cli():
 
 
 @cli.command()
-@click.option("--style", required=True, help="Style description for Imagen 3")
+@click.option("--style", default="", help="Style description (direct mode)")
+@click.option("--ref", default=None, help="Reference images folder (analysis mode)")
 @click.option("--name", required=True, help="Font name (no spaces)")
 @click.option("--family", default=None, help="Display family name")
 @click.option("--skip-generate", is_flag=True, help="Skip image generation (use existing)")
@@ -40,25 +41,38 @@ def cli():
 @click.option("--skip-assemble", is_flag=True, help="Skip font assembly")
 @click.option("--skip-qa", is_flag=True, help="Skip QA")
 @click.option("--skip-mockup", is_flag=True, help="Skip mockup generation")
-def run(style, name, family, skip_generate, skip_process, skip_assemble, skip_qa, skip_mockup):
-    """Run full pipeline: generate → process → assemble → QA → mockup."""
+def run(style, ref, name, family, skip_generate, skip_process, skip_assemble, skip_qa, skip_mockup):
+    """Run full pipeline: [analyze →] generate → process → assemble → QA → mockup."""
+    if not style and not ref:
+        console.print("[red]Phai co --style hoac --ref[/red]")
+        raise SystemExit(1)
+
     start = time.time()
 
     console.print(Panel(
         f"[bold]Font: {name}[/bold]\n"
-        f"Style: {style}\n"
+        f"Mode: {'Reference Analysis' if ref else 'Direct Prompt'}\n"
+        f"{'Ref: ' + ref if ref else 'Style: ' + style}\n"
         f"Family: {family or name}",
         title="Tony AI Font Factory",
         border_style="blue",
     ))
 
     stages = []
+    analysis = None
+
+    # Stage 0: Analyze references
+    if ref:
+        console.print("\n[bold cyan]Stage 0: Analyze Reference Images[/bold cyan]")
+        from scripts.analyze import analyze_references
+        analysis = analyze_references(ref, name)
+        stages.append(("Analyze", "OK"))
 
     # Stage 1: Generate
     if not skip_generate:
         console.print("\n[bold cyan]Stage 1/5: Generate Letters[/bold cyan]")
         from scripts.generate import generate_font_images
-        generate_font_images(style, name)
+        generate_font_images(style, name, ref_dir=ref, analysis=analysis)
         stages.append(("Generate", "OK"))
     else:
         stages.append(("Generate", "SKIPPED"))

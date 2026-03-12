@@ -162,7 +162,31 @@ def get_font(name):
     if not font_dir.exists():
         return jsonify({"error": "Not found"}), 404
 
-    data = {"name": name, "files": {}}
+    data = {"name": name, "files": {}, "analysis": None, "ref_dir": None}
+
+    # Load style analysis if exists
+    analysis_file = font_dir / "style_analysis.json"
+    if analysis_file.exists():
+        try:
+            data["analysis"] = json.loads(analysis_file.read_text())
+        except Exception:
+            pass
+
+    # Check ref dir
+    ref_dir = font_dir / "references"
+    if ref_dir.exists():
+        data["ref_dir"] = str(ref_dir)
+        data["files"]["references"] = []
+        for f in sorted(ref_dir.iterdir()):
+            if f.name.startswith("."):
+                continue
+            data["files"]["references"] = data["files"].get("references", [])
+            data["files"]["references"].append({
+                "name": f.name,
+                "size": sizeof_fmt(f.stat().st_size),
+                "url": f"/output/{name}/references/{f.name}",
+            })
+
     for sub in ["images", "nobg", "svgs", "fonts", "mockups", "specimens"]:
         sub_dir = font_dir / sub
         if sub_dir.exists():
@@ -255,6 +279,78 @@ def rerun_stage(name):
     return jsonify({"ok": True})
 
 
+# ── API: Upload references ─────────────────────────────────────────────
+@app.route("/api/fonts/<name>/upload-refs", methods=["POST"])
+def upload_references(name):
+    """Upload reference images for style analysis."""
+    ref_dir = OUTPUT_DIR / name / "references"
+    ref_dir.mkdir(parents=True, exist_ok=True)
+
+    files = request.files.getlist("files")
+    if not files:
+        return jsonify({"error": "No files"}), 400
+
+    saved = []
+    for f in files:
+        if f.filename and f.filename.lower().endswith((".png", ".jpg", ".jpeg", ".webp")):
+            path = ref_dir / f.filename
+            f.save(str(path))
+            saved.append(f.filename)
+
+    return jsonify({"ok": True, "saved": saved, "count": len(saved)})
+
+
+@app.route("/api/fonts/<name>/analyze", methods=["POST"])
+def analyze_font_style(name):
+    """Analyze reference images and save style analysis."""
+    data = request.json or {}
+    ext_ref_dir = data.get("ref_dir", "")
+
+    # Check for external ref dir or built-in
+    ref_dir = OUTPUT_DIR / name / "references"
+
+    # If external path provided, copy images to references folder
+    if ext_ref_dir and Path(ext_ref_dir).expanduser().exists():
+        import shutil
+        ext_path = Path(ext_ref_dir).expanduser()
+        ref_dir.mkdir(parents=True, exist_ok=True)
+        for ext in ["*.png", "*.jpg", "*.jpeg", "*.webp"]:
+            for f in ext_path.glob(ext):
+                shutil.copy2(f, ref_dir / f.name)
+
+    if not ref_dir.exists() or not list(ref_dir.glob("*.png")) + list(ref_dir.glob("*.jpg")) + list(ref_dir.glob("*.jpeg")) + list(ref_dir.glob("*.webp")):
+        return jsonify({"error": "No reference images. Upload or provide folder path."}), 400
+
+    with job_lock:
+        if name in jobs and jobs[name]["status"] == "running":
+            return jsonify({"error": f"{name} is already running"}), 409
+        jobs[name] = {
+            "status": "running",
+            "stage": "analyze",
+            "started": time.time(),
+            "log": ["Analyzing reference images..."],
+            "error": None,
+        }
+
+    def run_analyze():
+        job = jobs[name]
+        try:
+            from scripts.analyze import analyze_references
+            result = analyze_references(str(ref_dir), name)
+            job["log"].append(f"Style: {result.get('style_name_en', 'analyzed')}")
+            job["log"].append(f"Material: {result.get('material_keyword', '?')}")
+            job["log"].append(f"Mood: {result.get('mood_keyword', '?')}")
+            job["status"] = "done"
+            job["log"].append("Analysis complete!")
+        except Exception as e:
+            job["status"] = "error"
+            job["error"] = str(e)
+            job["log"].append(f"ERROR: {e}")
+
+    threading.Thread(target=run_analyze, daemon=True).start()
+    return jsonify({"ok": True})
+
+
 # ── API: Pipeline ──────────────────────────────────────────────────────
 @app.route("/api/run", methods=["POST"])
 def run_pipeline():
@@ -262,10 +358,23 @@ def run_pipeline():
     data = request.json or {}
     style = data.get("style", "").strip()
     name = data.get("name", "").strip()
+    ref_dir = data.get("ref_dir", "").strip()
     skip = data.get("skip", [])
 
-    if not style or not name:
-        return jsonify({"error": "style and name required"}), 400
+    if not name:
+        return jsonify({"error": "name required"}), 400
+
+    # Check if ref_dir exists in output
+    actual_ref_dir = None
+    built_in_ref = OUTPUT_DIR / name / "references"
+    if ref_dir and Path(ref_dir).exists():
+        actual_ref_dir = ref_dir
+    elif built_in_ref.exists() and list(built_in_ref.glob("*.*")):
+        actual_ref_dir = str(built_in_ref)
+
+    # Need either style or ref_dir
+    if not style and not actual_ref_dir:
+        return jsonify({"error": "style prompt hoac reference folder can thiet"}), 400
 
     with job_lock:
         if name in jobs and jobs[name]["status"] == "running":
@@ -280,12 +389,33 @@ def run_pipeline():
 
     def run_in_bg():
         job = jobs[name]
+        analysis = None
         try:
+            # Stage 0: Analyze references (if ref mode)
+            if actual_ref_dir and "analyze" not in skip:
+                job["stage"] = "analyze"
+                job["log"].append("Stage 0: Analyzing reference images...")
+                from scripts.analyze import analyze_references
+                analysis = analyze_references(actual_ref_dir, name)
+                job["log"].append(f"Style: {analysis.get('style_name_en', '?')} | Material: {analysis.get('material_keyword', '?')}")
+
+            # Also load existing analysis if skipped
+            if not analysis:
+                analysis_file = OUTPUT_DIR / name / "style_analysis.json"
+                if analysis_file.exists():
+                    analysis = json.loads(analysis_file.read_text())
+                    job["log"].append(f"Loaded saved analysis: {analysis.get('style_name_en', '?')}")
+
             if "generate" not in skip:
                 job["stage"] = "generate"
                 job["log"].append("Stage 1/5: Generating letters...")
                 from scripts.generate import generate_font_images
-                generate_font_images(style, name)
+                generate_font_images(
+                    style=style,
+                    font_name=name,
+                    ref_dir=actual_ref_dir,
+                    analysis=analysis,
+                )
                 job["log"].append("Generate complete")
 
             if "process" not in skip:
