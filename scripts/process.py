@@ -44,29 +44,26 @@ def crop_and_normalize(img_path: Path, size: int = GLYPH_SIZE) -> None:
 
 
 def vectorize_png(png_path: Path, svg_path: Path) -> bool:
-    """Convert PNG to SVG using vtracer."""
+    """Convert PNG to SVG using vtracer Python API."""
     try:
-        subprocess.run(
-            [
-                "vtracer",
-                "--input", str(png_path),
-                "--output", str(svg_path),
-                "--colormode", "binary",
-                "--filter_speckle", "4",
-                "--corner_threshold", "60",
-                "--length_threshold", "4.0",
-                "--splice_threshold", "45",
-                "--mode", "spline",
-            ],
-            check=True,
-            capture_output=True,
+        import vtracer
+        svg_str = vtracer.convert_raw_image_to_svg(
+            png_path.read_bytes(),
+            img_format="png",
+            colormode="binary",
+            filter_speckle=4,
+            corner_threshold=60,
+            length_threshold=4.0,
+            splice_threshold=45,
+            mode="spline",
         )
+        svg_path.write_text(svg_str)
         return True
-    except FileNotFoundError:
-        console.print("[red]vtracer not found. Install: cargo install vtracer[/red]")
+    except ImportError:
+        console.print("[red]vtracer not installed. Run: pip install vtracer[/red]")
         return False
-    except subprocess.CalledProcessError as e:
-        console.print(f"[red]vtracer error: {e.stderr.decode()}[/red]")
+    except Exception as e:
+        console.print(f"[red]vtracer error: {e}[/red]")
         return False
 
 

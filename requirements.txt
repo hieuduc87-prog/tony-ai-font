@@ -11,7 +11,7 @@ onnxruntime
 
 # Font Building
 fonttools>=4.50
-fontforge  # system package: brew install fontforge
+# fontforge: brew install fontforge (system package, not pip)
 
 # QA
 fontbakery>=0.12
