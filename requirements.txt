@@ -20,6 +20,9 @@ fontbakery>=0.12
 requests
 python-dotenv
 
+# Web UI
+flask>=3.0
+
 # CLI
 click>=8.0
 rich>=13.0
