@@ -9,7 +9,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
 
-from flask import Flask, render_template, jsonify, request, send_from_directory
+from flask import Flask, render_template, jsonify, request, send_from_directory, Response
 from config.settings import OUTPUT_DIR, PROJECT_ROOT
 
 app = Flask(__name__, static_folder="static", template_folder="templates")
@@ -19,10 +19,50 @@ jobs = {}
 job_lock = threading.Lock()
 
 
+def sizeof_fmt(num):
+    for unit in ("B", "KB", "MB"):
+        if abs(num) < 1024:
+            return f"{num:.1f}{unit}"
+        num /= 1024
+    return f"{num:.1f}GB"
+
+
 # ── Pages ──────────────────────────────────────────────────────────────
 @app.route("/")
 def index():
     return render_template("index.html")
+
+
+# ── API: Dashboard Stats ──────────────────────────────────────────────
+@app.route("/api/stats")
+def dashboard_stats():
+    """Overall dashboard statistics."""
+    total = done = glyphs = total_size = 0
+    running = len([j for j in jobs.values() if j["status"] == "running"])
+
+    if OUTPUT_DIR.exists():
+        for d in OUTPUT_DIR.iterdir():
+            if not d.is_dir() or d.name.startswith("."):
+                continue
+            if not (d / "images").exists() and not (d / "svgs").exists():
+                continue
+            total += 1
+            if (d / "fonts").exists() and list((d / "fonts").glob("*.*")):
+                done += 1
+            if (d / "images").exists():
+                glyphs += len(list((d / "images").glob("*.png")))
+            if (d / "fonts").exists():
+                for f in (d / "fonts").iterdir():
+                    total_size += f.stat().st_size
+
+    return jsonify({
+        "total": total,
+        "done": done,
+        "running": running,
+        "glyphs": glyphs,
+        "total_size": sizeof_fmt(total_size),
+        "categories": len(list((PROJECT_ROOT / "prompts").iterdir())) if (PROJECT_ROOT / "prompts").exists() else 0,
+    })
 
 
 # ── API: Fonts ─────────────────────────────────────────────────────────
@@ -34,35 +74,84 @@ def list_fonts():
         for d in sorted(OUTPUT_DIR.iterdir()):
             if not d.is_dir() or d.name.startswith("."):
                 continue
-            # Skip if not a font project dir (must have images/ or svgs/ subfolder)
             if not (d / "images").exists() and not (d / "svgs").exists():
                 continue
+
             imgs = len(list((d / "images").glob("*.png"))) if (d / "images").exists() else 0
             svgs = len(list((d / "svgs").glob("*.svg"))) if (d / "svgs").exists() else 0
             font_files = list((d / "fonts").glob("*.*")) if (d / "fonts").exists() else []
             mocks = len(list((d / "mockups").glob("*.png"))) if (d / "mockups").exists() else 0
             specimens = list((d / "specimens").glob("*.png")) if (d / "specimens").exists() else []
+            nobg = len(list((d / "nobg").glob("*.png"))) if (d / "nobg").exists() else 0
 
-            # Determine stage
-            if font_files:
+            # Determine stages completed
+            stages = {
+                "generate": imgs > 0,
+                "process": svgs > 0,
+                "assemble": len(font_files) > 0,
+                "qa": len(specimens) > 0,
+                "mockup": mocks > 0,
+            }
+            completed = sum(1 for v in stages.values() if v)
+
+            # Current stage label
+            if mocks > 0:
                 stage = "done"
-            elif svgs > 0:
+            elif len(specimens) > 0:
+                stage = "qa"
+            elif len(font_files) > 0:
                 stage = "assembled"
+            elif svgs > 0:
+                stage = "processed"
             elif imgs > 0:
                 stage = "generated"
             else:
                 stage = "empty"
+
+            # Font file sizes
+            font_info = []
+            for f in font_files:
+                font_info.append({
+                    "name": f.name,
+                    "ext": f.suffix,
+                    "size": sizeof_fmt(f.stat().st_size),
+                })
+
+            # Preview images
+            preview = None
+            if mocks > 0:
+                mp = d / "mockups"
+                hero = mp / f"{d.name}_hero_dark.png"
+                preview = f"/output/{d.name}/mockups/{hero.name}" if hero.exists() else f"/output/{d.name}/mockups/{sorted(mp.glob('*.png'))[0].name}"
+            elif len(specimens) > 0:
+                preview = f"/output/{d.name}/specimens/{specimens[0].name}"
+
+            # Check running
+            job = jobs.get(d.name)
+            is_running = job and job["status"] == "running"
+
+            # Created time
+            created = d.stat().st_ctime
 
             fonts.append({
                 "name": d.name,
                 "images": imgs,
                 "svgs": svgs,
                 "fonts": len(font_files),
+                "font_info": font_info,
                 "mockups": mocks,
+                "nobg": nobg,
                 "stage": stage,
+                "stages": stages,
+                "completed": completed,
                 "has_specimen": len(specimens) > 0,
-                "font_formats": [f.suffix for f in font_files],
+                "preview": preview,
+                "is_running": is_running,
+                "running_stage": job["stage"] if is_running else None,
+                "created": created,
             })
+    # Sort: running first, then by created desc
+    fonts.sort(key=lambda f: (not f["is_running"], -f["created"]))
     return jsonify(fonts)
 
 
@@ -77,9 +166,28 @@ def get_font(name):
     for sub in ["images", "nobg", "svgs", "fonts", "mockups", "specimens"]:
         sub_dir = font_dir / sub
         if sub_dir.exists():
-            data["files"][sub] = [f.name for f in sorted(sub_dir.iterdir()) if not f.name.startswith(".")]
+            files = []
+            for f in sorted(sub_dir.iterdir()):
+                if f.name.startswith("."):
+                    continue
+                files.append({
+                    "name": f.name,
+                    "size": sizeof_fmt(f.stat().st_size),
+                    "url": f"/output/{name}/{sub}/{f.name}",
+                })
+            data["files"][sub] = files
         else:
             data["files"][sub] = []
+
+    # Check if has a .woff2 or .ttf for live preview
+    font_sub = font_dir / "fonts"
+    data["preview_font"] = None
+    if font_sub.exists():
+        for ext in [".woff2", ".ttf", ".otf"]:
+            ff = list(font_sub.glob(f"*{ext}"))
+            if ff:
+                data["preview_font"] = f"/output/{name}/fonts/{ff[0].name}"
+                break
 
     return jsonify(data)
 
@@ -95,6 +203,58 @@ def delete_font(name):
     return jsonify({"ok": True})
 
 
+@app.route("/api/fonts/<name>/rerun", methods=["POST"])
+def rerun_stage(name):
+    """Re-run a specific pipeline stage."""
+    data = request.json or {}
+    stage = data.get("stage")
+    style = data.get("style", "")
+
+    if not stage:
+        return jsonify({"error": "stage required"}), 400
+
+    with job_lock:
+        if name in jobs and jobs[name]["status"] == "running":
+            return jsonify({"error": f"{name} is already running"}), 409
+        jobs[name] = {
+            "status": "running",
+            "stage": stage,
+            "started": time.time(),
+            "log": [],
+            "error": None,
+        }
+
+    def run_stage():
+        job = jobs[name]
+        try:
+            job["log"].append(f"Re-running stage: {stage}")
+            if stage == "generate":
+                from scripts.generate import generate_font_images
+                generate_font_images(style, name)
+            elif stage == "process":
+                from scripts.process import process_font_images
+                process_font_images(name)
+            elif stage == "assemble":
+                from scripts.assemble import assemble_font
+                family = data.get("family") or name.replace("_", " ").replace("-", " ")
+                assemble_font(name, family)
+            elif stage == "qa":
+                from scripts.qa import qa_font
+                qa_font(name)
+            elif stage == "mockup":
+                from scripts.mockup import generate_mockups
+                generate_mockups(name)
+            job["status"] = "done"
+            job["log"].append(f"{stage} complete!")
+        except Exception as e:
+            job["status"] = "error"
+            job["error"] = str(e)
+            job["log"].append(f"ERROR: {e}")
+
+    threading.Thread(target=run_stage, daemon=True).start()
+    return jsonify({"ok": True})
+
+
 # ── API: Pipeline ──────────────────────────────────────────────────────
 @app.route("/api/run", methods=["POST"])
 def run_pipeline():
@@ -107,7 +267,6 @@ def run_pipeline():
     if not style or not name:
         return jsonify({"error": "style and name required"}), 400
 
-    # Check if already running
     with job_lock:
         if name in jobs and jobs[name]["status"] == "running":
             return jsonify({"error": f"{name} is already running"}), 409
@@ -122,7 +281,6 @@ def run_pipeline():
     def run_in_bg():
         job = jobs[name]
         try:
-            # Stage 1: Generate
             if "generate" not in skip:
                 job["stage"] = "generate"
                 job["log"].append("Stage 1/5: Generating letters...")
@@ -130,7 +288,6 @@ def run_pipeline():
                 generate_font_images(style, name)
                 job["log"].append("Generate complete")
 
-            # Stage 2: Process
             if "process" not in skip:
                 job["stage"] = "process"
                 job["log"].append("Stage 2/5: Processing images...")
@@ -138,7 +295,6 @@ def run_pipeline():
                 process_font_images(name)
                 job["log"].append("Process complete")
 
-            # Stage 3: Assemble
             if "assemble" not in skip:
                 job["stage"] = "assemble"
                 job["log"].append("Stage 3/5: Assembling font...")
@@ -147,7 +303,6 @@ def run_pipeline():
                 assemble_font(name, family)
                 job["log"].append("Assemble complete")
 
-            # Stage 4: QA
             if "qa" not in skip:
                 job["stage"] = "qa"
                 job["log"].append("Stage 4/5: Running QA...")
@@ -155,7 +310,6 @@ def run_pipeline():
                 qa_font(name)
                 job["log"].append("QA complete")
 
-            # Stage 5: Mockup
             if "mockup" not in skip:
                 job["stage"] = "mockup"
                 job["log"].append("Stage 5/5: Generating mockups...")
@@ -172,8 +326,7 @@ def run_pipeline():
             job["error"] = str(e)
             job["log"].append(f"ERROR: {e}")
 
-    t = threading.Thread(target=run_in_bg, daemon=True)
-    t.start()
+    threading.Thread(target=run_in_bg, daemon=True).start()
     return jsonify({"ok": True, "name": name})
 
 
@@ -183,13 +336,13 @@ def job_status(name):
     with job_lock:
         job = jobs.get(name)
     if not job:
-        return jsonify({"status": "unknown"})
+        return jsonify({"status": "idle"})
     elapsed = time.time() - job["started"] if job["started"] else 0
     return jsonify({
         "status": job["status"],
         "stage": job["stage"],
         "elapsed": round(elapsed, 1),
-        "log": job["log"][-20:],
+        "log": job["log"][-50:],
         "error": job["error"],
     })
 
@@ -207,7 +360,7 @@ def list_prompts():
     return jsonify(result)
 
 
-# ── Serve font files / images ──────────────────────────────────────────
+# ── Serve output files ─────────────────────────────────────────────────
 @app.route("/output/<path:filepath>")
 def serve_output(filepath):
     """Serve files from output directory."""
@@ -217,7 +370,9 @@ def serve_output(filepath):
 # ── Error handlers ─────────────────────────────────────────────────────
 @app.errorhandler(404)
 def not_found(e):
-    return jsonify({"error": "Not found"}), 404
+    if request.path.startswith("/api/"):
+        return jsonify({"error": "Not found"}), 404
+    return render_template("index.html"), 404
 
 
 @app.errorhandler(500)

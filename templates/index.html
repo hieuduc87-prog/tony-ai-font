@@ -4,593 +4,1248 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Tony AI Font Factory</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
         :root {
-            --bg: #0d1117;
-            --surface: #161b22;
-            --surface2: #21262d;
-            --border: #30363d;
-            --text: #e6edf3;
-            --text2: #8b949e;
-            --accent: #58a6ff;
-            --green: #3fb950;
-            --yellow: #d29922;
-            --red: #f85149;
-            --purple: #bc8cff;
+            --bg: #09090b;
+            --surface: #18181b;
+            --surface2: #27272a;
+            --surface3: #3f3f46;
+            --border: #27272a;
+            --border2: #3f3f46;
+            --text: #fafafa;
+            --text2: #a1a1aa;
+            --text3: #71717a;
+            --accent: #6366f1;
+            --accent2: #818cf8;
+            --accent-glow: rgba(99,102,241,.15);
+            --green: #22c55e;
+            --green-bg: rgba(34,197,94,.1);
+            --yellow: #eab308;
+            --yellow-bg: rgba(234,179,8,.1);
+            --red: #ef4444;
+            --red-bg: rgba(239,68,68,.1);
+            --blue: #3b82f6;
+            --blue-bg: rgba(59,130,246,.1);
+            --purple: #a855f7;
+            --purple-bg: rgba(168,85,247,.1);
+            --orange: #f97316;
+            --orange-bg: rgba(249,115,22,.1);
+            --radius: 12px;
+            --radius-sm: 8px;
+            --shadow: 0 4px 24px rgba(0,0,0,.4);
         }
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
             background: var(--bg);
             color: var(--text);
             min-height: 100vh;
+            overflow-x: hidden;
         }
+        ::selection { background: var(--accent); color: #fff; }
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: var(--surface3); border-radius: 3px; }
 
-        /* Header */
+        /* ═══ HEADER ═══ */
         .header {
-            background: var(--surface);
+            background: linear-gradient(180deg, rgba(99,102,241,.08) 0%, transparent 100%);
             border-bottom: 1px solid var(--border);
-            padding: 16px 24px;
+            padding: 0 32px;
+            height: 64px;
             display: flex;
             align-items: center;
             justify-content: space-between;
+            position: sticky;
+            top: 0;
+            z-index: 50;
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
         }
-        .header h1 { font-size: 20px; font-weight: 600; }
-        .header h1 span { color: var(--accent); }
-        .header-stats { display: flex; gap: 20px; font-size: 13px; color: var(--text2); }
-        .header-stats b { color: var(--text); }
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 18px;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+        }
+        .logo-icon {
+            width: 36px;
+            height: 36px;
+            background: linear-gradient(135deg, var(--accent), var(--purple));
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            font-weight: 800;
+            color: #fff;
+        }
+        .logo span { color: var(--accent2); }
+        .header-actions { display: flex; align-items: center; gap: 12px; }
 
-        /* Layout */
-        .container { max-width: 1400px; margin: 0 auto; padding: 24px; }
+        /* ═══ MAIN LAYOUT ═══ */
+        .main { max-width: 1440px; margin: 0 auto; padding: 24px 32px; }
 
-        /* New Font Form */
-        .new-font {
+        /* ═══ STAT CARDS ═══ */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 16px;
+            margin-bottom: 32px;
+        }
+        .stat-card {
             background: var(--surface);
             border: 1px solid var(--border);
-            border-radius: 8px;
+            border-radius: var(--radius);
             padding: 20px;
-            margin-bottom: 24px;
+            position: relative;
+            overflow: hidden;
+            transition: border-color .2s, transform .2s;
         }
-        .new-font h2 { font-size: 16px; margin-bottom: 16px; color: var(--accent); }
-        .form-row { display: flex; gap: 12px; margin-bottom: 12px; flex-wrap: wrap; }
-        .form-group { display: flex; flex-direction: column; gap: 4px; }
-        .form-group label { font-size: 12px; color: var(--text2); text-transform: uppercase; letter-spacing: 0.5px; }
-        .form-group input, .form-group select, .form-group textarea {
+        .stat-card:hover { border-color: var(--border2); transform: translateY(-2px); }
+        .stat-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 2px;
+        }
+        .stat-card:nth-child(1)::before { background: linear-gradient(90deg, var(--accent), transparent); }
+        .stat-card:nth-child(2)::before { background: linear-gradient(90deg, var(--green), transparent); }
+        .stat-card:nth-child(3)::before { background: linear-gradient(90deg, var(--orange), transparent); }
+        .stat-card:nth-child(4)::before { background: linear-gradient(90deg, var(--purple), transparent); }
+        .stat-label { font-size: 12px; color: var(--text3); text-transform: uppercase; letter-spacing: 1px; font-weight: 600; margin-bottom: 8px; }
+        .stat-value { font-size: 32px; font-weight: 800; letter-spacing: -1px; }
+        .stat-sub { font-size: 12px; color: var(--text3); margin-top: 4px; }
+
+        /* ═══ SECTION ═══ */
+        .section { margin-bottom: 32px; }
+        .section-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 16px;
+        }
+        .section-title {
+            font-size: 16px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .section-title .count {
+            background: var(--surface2);
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 12px;
+            color: var(--text2);
+        }
+
+        /* ═══ CREATE PANEL ═══ */
+        .create-panel {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            overflow: hidden;
+            margin-bottom: 32px;
+        }
+        .create-toggle {
+            padding: 16px 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            cursor: pointer;
+            transition: background .2s;
+        }
+        .create-toggle:hover { background: var(--surface2); }
+        .create-toggle h3 {
+            font-size: 14px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .create-toggle .arrow {
+            transition: transform .3s;
+            color: var(--text3);
+        }
+        .create-toggle.open .arrow { transform: rotate(180deg); }
+        .create-body {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height .3s ease;
+        }
+        .create-body.open { max-height: 600px; }
+        .create-inner { padding: 0 20px 20px; }
+
+        /* Categories */
+        .cat-grid { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
+        .cat-chip {
+            padding: 8px 16px;
+            border-radius: 100px;
+            font-size: 13px;
+            font-weight: 500;
+            border: 1px solid var(--border);
+            background: transparent;
+            color: var(--text2);
+            cursor: pointer;
+            transition: all .2s;
+        }
+        .cat-chip:hover { border-color: var(--accent); color: var(--accent2); }
+        .cat-chip.active {
+            background: var(--accent-glow);
+            border-color: var(--accent);
+            color: var(--accent2);
+        }
+
+        /* Form */
+        .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 14px; }
+        .field { display: flex; flex-direction: column; gap: 6px; }
+        .field.full { grid-column: 1 / -1; }
+        .field label {
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--text3);
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+        }
+        .field input, .field textarea {
             background: var(--bg);
             border: 1px solid var(--border);
             color: var(--text);
-            padding: 8px 12px;
-            border-radius: 6px;
+            padding: 10px 14px;
+            border-radius: var(--radius-sm);
             font-size: 14px;
+            font-family: inherit;
             outline: none;
+            transition: border-color .2s;
         }
-        .form-group input:focus, .form-group textarea:focus {
-            border-color: var(--accent);
-        }
-        .form-group textarea { resize: vertical; min-height: 60px; }
+        .field input:focus, .field textarea:focus { border-color: var(--accent); }
+        .field textarea { resize: vertical; min-height: 70px; }
 
-        /* Category pills */
-        .categories { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
-        .cat-pill {
-            padding: 6px 14px;
-            border-radius: 20px;
-            font-size: 13px;
-            border: 1px solid var(--border);
-            background: var(--surface2);
+        .form-footer { display: flex; align-items: center; justify-content: space-between; }
+        .skip-row { display: flex; gap: 14px; }
+        .skip-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 12px;
+            color: var(--text3);
             cursor: pointer;
-            transition: all .2s;
         }
-        .cat-pill:hover, .cat-pill.active {
-            border-color: var(--accent);
-            background: rgba(88,166,255,.1);
-            color: var(--accent);
-        }
+        .skip-item input { accent-color: var(--accent); width: 14px; height: 14px; }
 
-        /* Skip checkboxes */
-        .skip-options { display: flex; gap: 16px; font-size: 13px; color: var(--text2); }
-        .skip-options label { display: flex; align-items: center; gap: 4px; cursor: pointer; }
-        .skip-options input[type="checkbox"] { accent-color: var(--accent); }
-
-        /* Buttons */
+        /* ═══ BUTTONS ═══ */
         .btn {
-            padding: 8px 20px;
-            border-radius: 6px;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 10px 20px;
+            border-radius: var(--radius-sm);
             border: none;
-            font-size: 14px;
-            font-weight: 500;
+            font-size: 13px;
+            font-weight: 600;
+            font-family: inherit;
             cursor: pointer;
-            transition: all .2s;
+            transition: all .15s;
         }
-        .btn-primary { background: var(--accent); color: #000; }
-        .btn-primary:hover { background: #79c0ff; }
-        .btn-primary:disabled { opacity: .5; cursor: not-allowed; }
-        .btn-danger { background: var(--red); color: #fff; }
-        .btn-danger:hover { opacity: .8; }
-        .btn-sm { padding: 4px 12px; font-size: 12px; }
+        .btn-primary {
+            background: var(--accent);
+            color: #fff;
+            box-shadow: 0 0 20px rgba(99,102,241,.3);
+        }
+        .btn-primary:hover { background: var(--accent2); box-shadow: 0 0 30px rgba(99,102,241,.4); }
+        .btn-primary:disabled { opacity: .4; cursor: not-allowed; box-shadow: none; }
         .btn-ghost {
             background: transparent;
             border: 1px solid var(--border);
             color: var(--text2);
+            padding: 8px 14px;
         }
-        .btn-ghost:hover { border-color: var(--text2); color: var(--text); }
-
-        /* Font Grid */
-        .grid-header {
-            display: flex;
-            justify-content: space-between;
+        .btn-ghost:hover { border-color: var(--text3); color: var(--text); }
+        .btn-danger { background: var(--red-bg); color: var(--red); border: 1px solid transparent; padding: 8px 14px; }
+        .btn-danger:hover { border-color: var(--red); }
+        .btn-sm { padding: 6px 12px; font-size: 12px; }
+        .btn-icon {
+            width: 32px;
+            height: 32px;
+            padding: 0;
+            display: inline-flex;
             align-items: center;
-            margin-bottom: 16px;
+            justify-content: center;
+            border-radius: var(--radius-sm);
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            color: var(--text2);
+            cursor: pointer;
+            transition: all .15s;
         }
-        .grid-header h2 { font-size: 16px; }
+        .btn-icon:hover { border-color: var(--text3); color: var(--text); }
+
+        /* ═══ FILTER BAR ═══ */
+        .filter-bar { display: flex; gap: 8px; }
+        .filter-chip {
+            padding: 6px 14px;
+            border-radius: 100px;
+            font-size: 12px;
+            font-weight: 500;
+            border: 1px solid var(--border);
+            background: transparent;
+            color: var(--text3);
+            cursor: pointer;
+            transition: all .15s;
+        }
+        .filter-chip:hover, .filter-chip.active {
+            background: var(--accent-glow);
+            border-color: var(--accent);
+            color: var(--accent2);
+        }
+
+        /* ═══ FONT GRID ═══ */
         .font-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+            grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
             gap: 16px;
         }
-
-        /* Font Card */
-        .font-card {
-            background: var(--surface);
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            overflow: hidden;
-            transition: border-color .2s;
-        }
-        .font-card:hover { border-color: var(--accent); }
-        .card-preview {
-            height: 180px;
-            background: var(--surface2);
+        .font-grid.empty-state {
             display: flex;
             align-items: center;
             justify-content: center;
-            overflow: hidden;
-            position: relative;
+            min-height: 300px;
         }
-        .card-preview img {
+        .empty-msg {
+            text-align: center;
+            color: var(--text3);
+        }
+        .empty-msg .icon { font-size: 48px; margin-bottom: 12px; opacity: .3; }
+        .empty-msg p { font-size: 14px; }
+
+        /* ═══ FONT CARD ═══ */
+        .font-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            overflow: hidden;
+            transition: all .2s;
+            cursor: pointer;
+        }
+        .font-card:hover {
+            border-color: var(--accent);
+            transform: translateY(-3px);
+            box-shadow: 0 8px 32px rgba(0,0,0,.3), 0 0 0 1px var(--accent);
+        }
+
+        /* Preview area */
+        .card-hero {
+            height: 200px;
+            background: var(--bg);
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .card-hero img {
             width: 100%;
             height: 100%;
             object-fit: cover;
+            transition: transform .3s;
         }
-        .card-preview .placeholder {
-            color: var(--text2);
-            font-size: 48px;
-            letter-spacing: 4px;
-            opacity: .3;
+        .font-card:hover .card-hero img { transform: scale(1.03); }
+        .card-hero .no-preview {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+            color: var(--text3);
         }
-        .card-body { padding: 14px; }
-        .card-name { font-size: 16px; font-weight: 600; margin-bottom: 8px; }
-        .card-stats { display: flex; gap: 12px; font-size: 12px; color: var(--text2); margin-bottom: 10px; }
-        .card-stats .stat { display: flex; align-items: center; gap: 4px; }
-        .stage-badge {
-            display: inline-block;
-            padding: 2px 8px;
-            border-radius: 10px;
-            font-size: 11px;
-            font-weight: 500;
+        .card-hero .letters {
+            font-size: 56px;
+            font-weight: 200;
+            letter-spacing: 8px;
+            opacity: .15;
         }
-        .stage-done { background: rgba(63,185,80,.15); color: var(--green); }
-        .stage-generated { background: rgba(210,153,34,.15); color: var(--yellow); }
-        .stage-assembled { background: rgba(188,140,255,.15); color: var(--purple); }
-        .stage-empty { background: rgba(139,148,158,.15); color: var(--text2); }
-        .stage-running { background: rgba(88,166,255,.15); color: var(--accent); }
-        .card-actions { display: flex; gap: 8px; margin-top: 10px; }
 
-        /* Modal */
+        /* Running overlay */
+        .card-running-overlay {
+            position: absolute;
+            inset: 0;
+            background: rgba(9,9,11,.7);
+            backdrop-filter: blur(4px);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+        }
+        .spinner {
+            width: 36px;
+            height: 36px;
+            border: 3px solid var(--surface3);
+            border-top-color: var(--accent);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .running-label { font-size: 12px; font-weight: 600; color: var(--accent2); text-transform: uppercase; letter-spacing: 1px; }
+
+        /* Card body */
+        .card-body { padding: 16px; }
+        .card-title {
+            font-size: 16px;
+            font-weight: 700;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        /* Progress pipeline */
+        .pipeline {
+            display: flex;
+            align-items: center;
+            gap: 0;
+            margin-bottom: 14px;
+        }
+        .pipe-step {
+            flex: 1;
+            height: 4px;
+            background: var(--surface2);
+            position: relative;
+            border-radius: 2px;
+        }
+        .pipe-step:not(:last-child) { margin-right: 3px; }
+        .pipe-step.done { background: var(--green); }
+        .pipe-step.active {
+            background: var(--accent);
+            animation: pipePulse 1.5s ease infinite;
+        }
+        @keyframes pipePulse { 0%,100% { opacity: 1; } 50% { opacity: .4; } }
+        .pipe-labels {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 14px;
+        }
+        .pipe-label {
+            font-size: 9px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text3);
+        }
+        .pipe-label.done { color: var(--green); }
+        .pipe-label.active { color: var(--accent2); }
+
+        /* Card stats row */
+        .card-meta {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            font-size: 12px;
+            color: var(--text3);
+        }
+        .meta-item { display: flex; align-items: center; gap: 4px; }
+        .meta-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+
+        /* Stage badge */
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 3px 10px;
+            border-radius: 100px;
+            font-size: 11px;
+            font-weight: 600;
+            letter-spacing: 0.3px;
+        }
+        .badge-done { background: var(--green-bg); color: var(--green); }
+        .badge-running { background: var(--blue-bg); color: var(--blue); }
+        .badge-generated { background: var(--yellow-bg); color: var(--yellow); }
+        .badge-processed { background: var(--purple-bg); color: var(--purple); }
+        .badge-assembled { background: var(--orange-bg); color: var(--orange); }
+        .badge-empty { background: var(--surface2); color: var(--text3); }
+        .badge-qa { background: var(--purple-bg); color: var(--purple); }
+
+        /* ═══ DETAIL MODAL ═══ */
         .modal-overlay {
             display: none;
             position: fixed;
             inset: 0;
-            background: rgba(0,0,0,.6);
+            background: rgba(0,0,0,.7);
+            backdrop-filter: blur(8px);
             z-index: 100;
-            align-items: center;
+            align-items: flex-start;
             justify-content: center;
+            padding: 40px 24px;
+            overflow-y: auto;
         }
         .modal-overlay.active { display: flex; }
         .modal {
             background: var(--surface);
             border: 1px solid var(--border);
-            border-radius: 12px;
-            width: 90%;
-            max-width: 900px;
-            max-height: 85vh;
-            overflow-y: auto;
-            padding: 24px;
+            border-radius: 16px;
+            width: 100%;
+            max-width: 1100px;
+            box-shadow: var(--shadow);
+            animation: modalIn .2s ease;
         }
-        .modal-header {
+        @keyframes modalIn { from { opacity: 0; transform: translateY(20px); } }
+
+        .modal-top {
+            padding: 24px 28px;
+            border-bottom: 1px solid var(--border);
             display: flex;
-            justify-content: space-between;
             align-items: center;
+            justify-content: space-between;
+        }
+        .modal-title-area { display: flex; align-items: center; gap: 12px; }
+        .modal-title { font-size: 22px; font-weight: 700; }
+        .modal-close {
+            width: 36px;
+            height: 36px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            color: var(--text2);
+            font-size: 18px;
+            cursor: pointer;
+            transition: all .15s;
+        }
+        .modal-close:hover { background: var(--surface3); color: var(--text); }
+
+        /* Tabs */
+        .modal-tabs {
+            display: flex;
+            border-bottom: 1px solid var(--border);
+            padding: 0 28px;
+        }
+        .tab-btn {
+            padding: 14px 20px;
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text3);
+            border: none;
+            background: none;
+            cursor: pointer;
+            position: relative;
+            font-family: inherit;
+            transition: color .15s;
+        }
+        .tab-btn:hover { color: var(--text2); }
+        .tab-btn.active { color: var(--accent2); }
+        .tab-btn.active::after {
+            content: '';
+            position: absolute;
+            bottom: -1px;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: var(--accent);
+            border-radius: 2px 2px 0 0;
+        }
+        .tab-count {
+            background: var(--surface2);
+            padding: 1px 6px;
+            border-radius: 8px;
+            font-size: 10px;
+            margin-left: 6px;
+        }
+
+        .modal-body { padding: 24px 28px; max-height: 65vh; overflow-y: auto; }
+        .tab-panel { display: none; }
+        .tab-panel.active { display: block; }
+
+        /* Preview tab — live font */
+        .live-preview {
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 32px;
+            text-align: center;
             margin-bottom: 20px;
         }
-        .modal-header h2 { font-size: 18px; }
-        .modal-close {
-            background: none;
-            border: none;
+        .live-preview .preview-text {
+            font-size: 64px;
+            line-height: 1.2;
+            margin-bottom: 16px;
+            word-break: break-all;
+        }
+        .live-preview .preview-alpha {
+            font-size: 36px;
             color: var(--text2);
-            font-size: 24px;
-            cursor: pointer;
+            line-height: 1.4;
+            letter-spacing: 2px;
         }
-
-        /* Image grid in modal */
-        .img-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+        .preview-controls {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+        .preview-controls input[type="text"] {
+            flex: 1;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            color: var(--text);
+            padding: 10px 14px;
+            border-radius: var(--radius-sm);
+            font-size: 14px;
+            font-family: inherit;
+            outline: none;
+        }
+        .preview-controls input[type="text"]:focus { border-color: var(--accent); }
+        .size-slider {
+            display: flex;
+            align-items: center;
             gap: 8px;
-        }
-        .img-grid img {
-            width: 100%;
-            border-radius: 4px;
-            border: 1px solid var(--border);
-            background: var(--bg);
-        }
-
-        /* Log panel */
-        .log-panel {
-            background: var(--bg);
-            border: 1px solid var(--border);
-            border-radius: 6px;
-            padding: 12px;
-            font-family: 'SF Mono', Monaco, monospace;
             font-size: 12px;
-            color: var(--green);
-            max-height: 200px;
-            overflow-y: auto;
-            margin-top: 12px;
+            color: var(--text3);
         }
-        .log-line { margin-bottom: 2px; }
-        .log-line.error { color: var(--red); }
+        .size-slider input[type="range"] {
+            accent-color: var(--accent);
+            width: 120px;
+        }
 
-        /* Running indicator */
-        @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: .4; } }
-        .running-dot {
+        /* Glyph grid */
+        .glyph-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+            gap: 6px;
+        }
+        .glyph-cell {
+            aspect-ratio: 1;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            transition: all .15s;
+            position: relative;
+        }
+        .glyph-cell:hover { border-color: var(--accent); transform: scale(1.05); }
+        .glyph-cell img { width: 100%; height: 100%; object-fit: contain; padding: 4px; }
+        .glyph-cell .label {
+            position: absolute;
+            bottom: 2px;
+            right: 4px;
+            font-size: 9px;
+            color: var(--text3);
+            font-weight: 600;
+        }
+
+        /* Mockup gallery */
+        .mockup-gallery {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 12px;
+        }
+        .mockup-item {
+            border-radius: var(--radius);
+            overflow: hidden;
+            border: 1px solid var(--border);
+            transition: all .2s;
+        }
+        .mockup-item:hover { border-color: var(--accent); transform: scale(1.02); }
+        .mockup-item img { width: 100%; display: block; }
+
+        /* Files list */
+        .file-list { display: flex; flex-direction: column; gap: 6px; }
+        .file-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px 16px;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            transition: border-color .15s;
+        }
+        .file-row:hover { border-color: var(--border2); }
+        .file-name { font-size: 14px; font-weight: 500; }
+        .file-ext { color: var(--accent2); }
+        .file-size { font-size: 12px; color: var(--text3); }
+        .file-actions { display: flex; gap: 8px; }
+
+        /* Log terminal */
+        .terminal {
+            background: #0c0c0c;
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 16px;
+            font-family: 'SF Mono', 'Fira Code', Monaco, monospace;
+            font-size: 12px;
+            line-height: 1.7;
+            color: #4ade80;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .terminal .line { white-space: pre-wrap; }
+        .terminal .line.err { color: var(--red); }
+        .terminal .line.info { color: var(--text3); }
+        .terminal .cursor {
             display: inline-block;
             width: 8px;
-            height: 8px;
-            border-radius: 50%;
-            background: var(--accent);
-            animation: pulse 1.5s infinite;
-            margin-right: 6px;
+            height: 14px;
+            background: #4ade80;
+            animation: blink 1s step-end infinite;
+            vertical-align: middle;
         }
+        @keyframes blink { 50% { opacity: 0; } }
 
-        /* Toast */
+        /* ═══ TOAST ═══ */
+        .toast-container { position: fixed; bottom: 24px; right: 24px; z-index: 200; display: flex; flex-direction: column; gap: 8px; }
         .toast {
-            position: fixed;
-            bottom: 24px;
-            right: 24px;
-            padding: 12px 20px;
-            border-radius: 8px;
-            font-size: 14px;
-            z-index: 200;
-            transition: opacity .3s;
+            padding: 14px 20px;
+            border-radius: var(--radius-sm);
+            font-size: 13px;
+            font-weight: 500;
+            animation: toastIn .3s ease;
+            box-shadow: var(--shadow);
+            display: flex;
+            align-items: center;
+            gap: 8px;
         }
-        .toast-success { background: var(--green); color: #000; }
-        .toast-error { background: var(--red); color: #fff; }
+        @keyframes toastIn { from { opacity: 0; transform: translateX(20px); } }
+        .toast-success { background: #065f46; color: #6ee7b7; border: 1px solid #059669; }
+        .toast-error { background: #7f1d1d; color: #fca5a5; border: 1px solid #dc2626; }
 
-        /* Responsive */
+        /* ═══ RESPONSIVE ═══ */
+        @media (max-width: 1024px) {
+            .stats-grid { grid-template-columns: repeat(2, 1fr); }
+        }
         @media (max-width: 768px) {
-            .form-row { flex-direction: column; }
+            .header { padding: 0 16px; }
+            .main { padding: 16px; }
+            .stats-grid { grid-template-columns: 1fr 1fr; }
             .font-grid { grid-template-columns: 1fr; }
+            .form-grid { grid-template-columns: 1fr; }
+            .modal { border-radius: 12px; }
         }
     </style>
 </head>
 <body>
-    <div class="header">
-        <h1><span>Tony</span> AI Font Factory</h1>
-        <div class="header-stats">
-            <span>Fonts: <b id="totalFonts">0</b></span>
-            <span>Done: <b id="doneFonts">0</b></span>
-            <span>Running: <b id="runningJobs">0</b></span>
+
+<!-- ═══ HEADER ═══ -->
+<header class="header">
+    <div class="logo">
+        <div class="logo-icon">Tf</div>
+        <span>Tony</span> Font Factory
+    </div>
+    <div class="header-actions">
+        <button class="btn-icon" onclick="loadAll()" title="Refresh">&#x21bb;</button>
+    </div>
+</header>
+
+<!-- ═══ MAIN ═══ -->
+<main class="main">
+
+    <!-- Stats -->
+    <div class="stats-grid" id="statsGrid">
+        <div class="stat-card">
+            <div class="stat-label">Total Fonts</div>
+            <div class="stat-value" id="sTotalFonts">-</div>
+            <div class="stat-sub" id="sTotalSize">loading...</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">Completed</div>
+            <div class="stat-value" id="sDoneFonts">-</div>
+            <div class="stat-sub">ready to sell</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">Running</div>
+            <div class="stat-value" id="sRunning">-</div>
+            <div class="stat-sub">in pipeline</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">Total Glyphs</div>
+            <div class="stat-value" id="sGlyphs">-</div>
+            <div class="stat-sub" id="sCategories">-</div>
         </div>
     </div>
 
-    <div class="container">
-        <!-- New Font -->
-        <div class="new-font">
-            <h2>+ Tao Font Moi</h2>
-            <div class="categories" id="categories"></div>
-            <div class="form-row">
-                <div class="form-group" style="flex:1">
-                    <label>Ten Font</label>
-                    <input type="text" id="fontName" placeholder="VD: BotanicalBloom">
-                </div>
-                <div class="form-group" style="flex:1">
-                    <label>Family Name</label>
-                    <input type="text" id="familyName" placeholder="VD: Botanical Bloom (de trong = tu tao)">
-                </div>
-            </div>
-            <div class="form-group" style="margin-bottom:12px">
-                <label>Style Prompt</label>
-                <textarea id="stylePrompt" placeholder="Mo ta style cho Imagen 3..."></textarea>
-            </div>
-            <div class="skip-options" style="margin-bottom:12px">
-                <label>Bo qua:</label>
-                <label><input type="checkbox" id="skipGenerate"> Generate</label>
-                <label><input type="checkbox" id="skipProcess"> Process</label>
-                <label><input type="checkbox" id="skipAssemble"> Assemble</label>
-                <label><input type="checkbox" id="skipQa"> QA</label>
-                <label><input type="checkbox" id="skipMockup"> Mockup</label>
-            </div>
-            <button class="btn btn-primary" id="btnRun" onclick="startPipeline()">Chay Pipeline</button>
+    <!-- Create Panel -->
+    <div class="create-panel">
+        <div class="create-toggle" id="createToggle" onclick="toggleCreate()">
+            <h3><svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M8 2a.75.75 0 01.75.75v4.5h4.5a.75.75 0 010 1.5h-4.5v4.5a.75.75 0 01-1.5 0v-4.5h-4.5a.75.75 0 010-1.5h4.5v-4.5A.75.75 0 018 2z"/></svg> Tao Font Moi</h3>
+            <span class="arrow">&#9662;</span>
         </div>
+        <div class="create-body" id="createBody">
+            <div class="create-inner">
+                <div class="cat-grid" id="catGrid"></div>
+                <div class="form-grid">
+                    <div class="field">
+                        <label>Ten Font</label>
+                        <input type="text" id="fName" placeholder="VD: BotanicalBloom">
+                    </div>
+                    <div class="field">
+                        <label>Family Name</label>
+                        <input type="text" id="fFamily" placeholder="Tu tao neu de trong">
+                    </div>
+                    <div class="field full">
+                        <label>Style Prompt</label>
+                        <textarea id="fStyle" placeholder="Mo ta style cho Imagen 3 API..."></textarea>
+                    </div>
+                </div>
+                <div class="form-footer">
+                    <div class="skip-row">
+                        <label class="skip-item"><input type="checkbox" id="sk1"> Skip Generate</label>
+                        <label class="skip-item"><input type="checkbox" id="sk2"> Skip Process</label>
+                        <label class="skip-item"><input type="checkbox" id="sk3"> Skip Assemble</label>
+                        <label class="skip-item"><input type="checkbox" id="sk4"> Skip QA</label>
+                        <label class="skip-item"><input type="checkbox" id="sk5"> Skip Mockup</label>
+                    </div>
+                    <button class="btn btn-primary" id="btnRun" onclick="startPipeline()">
+                        <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M4 2l10 6-10 6z"/></svg>
+                        Chay Pipeline
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
 
-        <!-- Font Grid -->
-        <div class="grid-header">
-            <h2>Danh Sach Font</h2>
-            <button class="btn btn-ghost btn-sm" onclick="loadFonts()">Refresh</button>
+    <!-- Font List -->
+    <div class="section">
+        <div class="section-header">
+            <div class="section-title">
+                Font Library <span class="count" id="fontCount">0</span>
+            </div>
+            <div class="filter-bar" id="filterBar">
+                <button class="filter-chip active" data-filter="all">All</button>
+                <button class="filter-chip" data-filter="done">Done</button>
+                <button class="filter-chip" data-filter="running">Running</button>
+                <button class="filter-chip" data-filter="progress">In Progress</button>
+            </div>
         </div>
         <div class="font-grid" id="fontGrid"></div>
     </div>
+</main>
 
-    <!-- Detail Modal -->
-    <div class="modal-overlay" id="modal">
-        <div class="modal">
-            <div class="modal-header">
-                <h2 id="modalTitle">Font Detail</h2>
-                <button class="modal-close" onclick="closeModal()">&times;</button>
+<!-- ═══ DETAIL MODAL ═══ -->
+<div class="modal-overlay" id="modal" onclick="if(event.target===this)closeModal()">
+    <div class="modal">
+        <div class="modal-top">
+            <div class="modal-title-area">
+                <div class="modal-title" id="mTitle">Font</div>
+                <span id="mBadge"></span>
             </div>
-            <div id="modalBody"></div>
+            <button class="modal-close" onclick="closeModal()">&times;</button>
         </div>
+        <div class="modal-tabs" id="mTabs"></div>
+        <div class="modal-body" id="mBody"></div>
     </div>
+</div>
 
-    <script>
-    let prompts = {};
-    let pollers = {};
+<!-- Toast container -->
+<div class="toast-container" id="toasts"></div>
 
-    // ── Init ──
-    async function init() {
-        await loadPrompts();
-        await loadFonts();
-        setInterval(loadFonts, 10000);
-    }
+<script>
+// ═══ STATE ═══
+let allFonts = [];
+let prompts = {};
+let pollers = {};
+let currentFilter = 'all';
+let currentDetail = null;
 
-    // ── Prompts ──
-    async function loadPrompts() {
-        const res = await fetch('/api/prompts');
-        prompts = await res.json();
-        const el = document.getElementById('categories');
-        el.innerHTML = '';
-        for (const [cat, prompt] of Object.entries(prompts)) {
-            const pill = document.createElement('div');
-            pill.className = 'cat-pill';
-            pill.textContent = cat.replace('_', ' ');
-            pill.onclick = () => {
-                document.querySelectorAll('.cat-pill').forEach(p => p.classList.remove('active'));
-                pill.classList.add('active');
-                document.getElementById('stylePrompt').value = prompt;
-            };
-            el.appendChild(pill);
-        }
-    }
+const STAGES = ['generate','process','assemble','qa','mockup'];
+const STAGE_LABELS = {generate:'Gen',process:'Process',assemble:'Build',qa:'QA',mockup:'Mock'};
 
-    // ── Fonts ──
-    async function loadFonts() {
-        const res = await fetch('/api/fonts');
-        const fonts = await res.json();
+// ═══ INIT ═══
+async function init() {
+    await Promise.all([loadStats(), loadPrompts(), loadFonts()]);
+    setInterval(loadStats, 8000);
+    setInterval(loadFonts, 6000);
 
-        document.getElementById('totalFonts').textContent = fonts.length;
-        document.getElementById('doneFonts').textContent = fonts.filter(f => f.stage === 'done').length;
-        document.getElementById('runningJobs').textContent = Object.keys(pollers).length;
-
-        const grid = document.getElementById('fontGrid');
-        grid.innerHTML = '';
-
-        for (const font of fonts) {
-            grid.appendChild(createFontCard(font));
-        }
-    }
-
-    function createFontCard(font) {
-        const card = document.createElement('div');
-        card.className = 'font-card';
-        const isRunning = pollers[font.name];
-        const stageCls = isRunning ? 'stage-running' : `stage-${font.stage}`;
-        const stageText = isRunning ? `${pollers[font.name].stage}...` : font.stage;
-
-        card.innerHTML = `
-            <div class="card-preview" onclick="openDetail('${font.name}')">
-                ${font.mockups > 0
-                    ? `<img src="/output/${font.name}/mockups/${font.name}_hero_dark.png" onerror="this.parentElement.innerHTML='<div class=placeholder>ABC</div>'">`
-                    : font.has_specimen
-                    ? `<img src="/output/${font.name}/specimens/${font.name}_specimen.png" onerror="this.parentElement.innerHTML='<div class=placeholder>ABC</div>'">`
-                    : `<div class="placeholder">ABC</div>`
-                }
-            </div>
-            <div class="card-body">
-                <div class="card-name">
-                    ${isRunning ? '<span class="running-dot"></span>' : ''}
-                    ${font.name}
-                </div>
-                <div class="card-stats">
-                    <span class="stat">IMG: ${font.images}</span>
-                    <span class="stat">SVG: ${font.svgs}</span>
-                    <span class="stat">Font: ${font.fonts}</span>
-                    <span class="stat">Mock: ${font.mockups}</span>
-                    <span class="stage-badge ${stageCls}">${stageText}</span>
-                </div>
-                <div class="card-actions">
-                    <button class="btn btn-ghost btn-sm" onclick="openDetail('${font.name}')">Chi tiet</button>
-                    ${font.fonts > 0 ? `<button class="btn btn-ghost btn-sm" onclick="downloadFont('${font.name}')">Download</button>` : ''}
-                    <button class="btn btn-danger btn-sm" onclick="deleteFont('${font.name}')">Xoa</button>
-                </div>
-            </div>
-        `;
-        return card;
-    }
-
-    // ── Pipeline ──
-    async function startPipeline() {
-        const name = document.getElementById('fontName').value.trim();
-        const style = document.getElementById('stylePrompt').value.trim();
-        const family = document.getElementById('familyName').value.trim();
-
-        if (!name || !style) {
-            showToast('Can nhap ten font va style prompt', 'error');
-            return;
-        }
-
-        const skip = [];
-        if (document.getElementById('skipGenerate').checked) skip.push('generate');
-        if (document.getElementById('skipProcess').checked) skip.push('process');
-        if (document.getElementById('skipAssemble').checked) skip.push('assemble');
-        if (document.getElementById('skipQa').checked) skip.push('qa');
-        if (document.getElementById('skipMockup').checked) skip.push('mockup');
-
-        document.getElementById('btnRun').disabled = true;
-
-        const res = await fetch('/api/run', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({ name, style, family: family || null, skip })
+    // Filter clicks
+    document.querySelectorAll('.filter-chip').forEach(c => {
+        c.addEventListener('click', () => {
+            document.querySelectorAll('.filter-chip').forEach(x => x.classList.remove('active'));
+            c.classList.add('active');
+            currentFilter = c.dataset.filter;
+            renderFonts();
         });
-        const data = await res.json();
+    });
+}
 
-        document.getElementById('btnRun').disabled = false;
+async function loadAll() { await Promise.all([loadStats(), loadFonts()]); }
 
-        if (data.error) {
-            showToast(data.error, 'error');
-            return;
-        }
+// ═══ STATS ═══
+async function loadStats() {
+    const r = await fetch('/api/stats');
+    const s = await r.json();
+    document.getElementById('sTotalFonts').textContent = s.total;
+    document.getElementById('sDoneFonts').textContent = s.done;
+    document.getElementById('sRunning').textContent = s.running;
+    document.getElementById('sGlyphs').textContent = s.glyphs.toLocaleString();
+    document.getElementById('sTotalSize').textContent = s.total_size + ' total';
+    document.getElementById('sCategories').textContent = s.categories + ' categories';
+}
 
-        showToast(`Pipeline started: ${name}`, 'success');
-        startPolling(name);
-        loadFonts();
+// ═══ PROMPTS ═══
+async function loadPrompts() {
+    const r = await fetch('/api/prompts');
+    prompts = await r.json();
+    const el = document.getElementById('catGrid');
+    el.innerHTML = '';
+    for (const [cat, prompt] of Object.entries(prompts)) {
+        const chip = document.createElement('button');
+        chip.className = 'cat-chip';
+        chip.textContent = cat.replace(/_/g, ' ');
+        chip.onclick = () => {
+            document.querySelectorAll('.cat-chip').forEach(c => c.classList.remove('active'));
+            chip.classList.add('active');
+            document.getElementById('fStyle').value = prompt;
+        };
+        el.appendChild(chip);
     }
+}
 
-    function startPolling(name) {
-        pollers[name] = { stage: 'starting' };
-        const interval = setInterval(async () => {
-            const res = await fetch(`/api/run/${name}/status`);
-            const data = await res.json();
-            pollers[name].stage = data.stage;
+// ═══ FONTS ═══
+async function loadFonts() {
+    const r = await fetch('/api/fonts');
+    allFonts = await r.json();
 
-            if (data.status === 'done') {
-                clearInterval(interval);
-                delete pollers[name];
-                showToast(`${name} hoan thanh!`, 'success');
-                loadFonts();
-            } else if (data.status === 'error') {
-                clearInterval(interval);
-                delete pollers[name];
-                showToast(`${name} loi: ${data.error}`, 'error');
-                loadFonts();
-            }
-
-            document.getElementById('runningJobs').textContent = Object.keys(pollers).length;
-        }, 3000);
-    }
-
-    // ── Detail Modal ──
-    async function openDetail(name) {
-        const res = await fetch(`/api/fonts/${name}`);
-        const data = await res.json();
-
-        document.getElementById('modalTitle').textContent = name;
-        const body = document.getElementById('modalBody');
-
-        let html = '';
-
-        // Job status if running
-        if (pollers[name]) {
-            html += `<div class="log-panel" id="logPanel"></div>`;
-        }
-
-        // Images
-        if (data.files.images.length > 0) {
-            html += `<h3 style="margin:16px 0 8px;font-size:14px;color:var(--text2)">Generated Images (${data.files.images.length})</h3>`;
-            html += '<div class="img-grid">';
-            for (const f of data.files.images) {
-                html += `<img src="/output/${name}/images/${f}" loading="lazy" title="${f}">`;
-            }
-            html += '</div>';
-        }
-
-        // SVGs
-        if (data.files.svgs.length > 0) {
-            html += `<h3 style="margin:16px 0 8px;font-size:14px;color:var(--text2)">SVGs (${data.files.svgs.length})</h3>`;
-            html += '<div class="img-grid">';
-            for (const f of data.files.svgs) {
-                html += `<img src="/output/${name}/svgs/${f}" loading="lazy" title="${f}" style="background:#fff">`;
-            }
-            html += '</div>';
-        }
-
-        // Specimens
-        if (data.files.specimens.length > 0) {
-            html += `<h3 style="margin:16px 0 8px;font-size:14px;color:var(--text2)">Specimens</h3>`;
-            for (const f of data.files.specimens) {
-                html += `<img src="/output/${name}/specimens/${f}" style="width:100%;border-radius:8px;border:1px solid var(--border)">`;
-            }
-        }
-
-        // Mockups
-        if (data.files.mockups.length > 0) {
-            html += `<h3 style="margin:16px 0 8px;font-size:14px;color:var(--text2)">Mockups (${data.files.mockups.length})</h3>`;
-            html += '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:8px">';
-            for (const f of data.files.mockups) {
-                html += `<img src="/output/${name}/mockups/${f}" style="width:100%;border-radius:6px;border:1px solid var(--border)">`;
-            }
-            html += '</div>';
-        }
-
-        // Font files
-        if (data.files.fonts.length > 0) {
-            html += `<h3 style="margin:16px 0 8px;font-size:14px;color:var(--text2)">Font Files</h3>`;
-            for (const f of data.files.fonts) {
-                html += `<a href="/output/${name}/fonts/${f}" download style="display:inline-block;margin-right:12px;color:var(--accent);text-decoration:none">${f}</a>`;
-            }
-        }
-
-        body.innerHTML = html;
-        document.getElementById('modal').classList.add('active');
-
-        // Poll log if running
-        if (pollers[name]) {
-            const logInterval = setInterval(async () => {
-                if (!pollers[name]) { clearInterval(logInterval); return; }
-                const res = await fetch(`/api/run/${name}/status`);
-                const st = await res.json();
-                const panel = document.getElementById('logPanel');
-                if (panel) {
-                    panel.innerHTML = st.log.map(l =>
-                        `<div class="log-line ${l.startsWith('ERROR') ? 'error' : ''}">${l}</div>`
-                    ).join('');
-                    panel.scrollTop = panel.scrollHeight;
-                }
-            }, 2000);
-        }
-    }
-
-    function closeModal() {
-        document.getElementById('modal').classList.remove('active');
-    }
-
-    // ── Actions ──
-    async function deleteFont(name) {
-        if (!confirm(`Xoa font "${name}" va tat ca files?`)) return;
-        await fetch(`/api/fonts/${name}/delete`, { method: 'POST' });
-        showToast(`Deleted ${name}`, 'success');
-        loadFonts();
-    }
-
-    function downloadFont(name) {
-        window.open(`/output/${name}/fonts/`, '_blank');
-    }
-
-    // ── Toast ──
-    function showToast(msg, type = 'success') {
-        const toast = document.createElement('div');
-        toast.className = `toast toast-${type}`;
-        toast.textContent = msg;
-        document.body.appendChild(toast);
-        setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => toast.remove(), 300); }, 3000);
-    }
-
-    // ── Keyboard ──
-    document.addEventListener('keydown', e => {
-        if (e.key === 'Escape') closeModal();
+    // Auto-poll running jobs
+    allFonts.filter(f => f.is_running).forEach(f => {
+        if (!pollers[f.name]) startPolling(f.name);
     });
 
-    init();
-    </script>
+    document.getElementById('fontCount').textContent = allFonts.length;
+    renderFonts();
+}
+
+function renderFonts() {
+    const grid = document.getElementById('fontGrid');
+    let filtered = allFonts;
+
+    if (currentFilter === 'done') filtered = allFonts.filter(f => f.stage === 'done');
+    else if (currentFilter === 'running') filtered = allFonts.filter(f => f.is_running || pollers[f.name]);
+    else if (currentFilter === 'progress') filtered = allFonts.filter(f => f.stage !== 'done' && f.stage !== 'empty');
+
+    if (filtered.length === 0) {
+        grid.className = 'font-grid empty-state';
+        grid.innerHTML = `<div class="empty-msg"><div class="icon">Tf</div><p>Chua co font nao ${currentFilter !== 'all' ? 'trong filter nay' : '— tao font moi de bat dau!'}</p></div>`;
+        return;
+    }
+
+    grid.className = 'font-grid';
+    grid.innerHTML = '';
+    filtered.forEach(f => grid.appendChild(buildCard(f)));
+}
+
+function buildCard(font) {
+    const card = document.createElement('div');
+    card.className = 'font-card';
+    card.onclick = () => openDetail(font.name);
+
+    const isRunning = font.is_running || pollers[font.name];
+    const runStage = font.running_stage || (pollers[font.name] ? pollers[font.name].stage : '');
+    const badgeCls = isRunning ? 'badge-running' : `badge-${font.stage}`;
+    const badgeText = isRunning ? runStage : font.stage;
+
+    // Pipeline steps
+    let pipeHtml = '<div class="pipeline">';
+    let labelHtml = '<div class="pipe-labels">';
+    STAGES.forEach((s, i) => {
+        let cls = '';
+        if (font.stages[s]) cls = 'done';
+        else if (isRunning && runStage === s) cls = 'active';
+        pipeHtml += `<div class="pipe-step ${cls}"></div>`;
+        labelHtml += `<span class="pipe-label ${cls}">${STAGE_LABELS[s]}</span>`;
+    });
+    pipeHtml += '</div>';
+    labelHtml += '</div>';
+
+    card.innerHTML = `
+        <div class="card-hero">
+            ${font.preview
+                ? `<img src="${font.preview}" loading="lazy" onerror="this.parentElement.innerHTML='<div class=no-preview><div class=letters>ABC</div></div>'">`
+                : `<div class="no-preview"><div class="letters">ABC</div></div>`
+            }
+            ${isRunning ? `<div class="card-running-overlay"><div class="spinner"></div><div class="running-label">${runStage}...</div></div>` : ''}
+        </div>
+        <div class="card-body">
+            <div class="card-title">
+                ${font.name}
+                <span class="badge ${badgeCls}">${badgeText}</span>
+            </div>
+            ${pipeHtml}
+            ${labelHtml}
+            <div class="card-meta">
+                <span class="meta-item"><span class="meta-dot" style="background:var(--yellow)"></span>${font.images} imgs</span>
+                <span class="meta-item"><span class="meta-dot" style="background:var(--purple)"></span>${font.svgs} svgs</span>
+                <span class="meta-item"><span class="meta-dot" style="background:var(--green)"></span>${font.fonts} fonts</span>
+                <span class="meta-item"><span class="meta-dot" style="background:var(--blue)"></span>${font.mockups} mocks</span>
+            </div>
+        </div>
+    `;
+    return card;
+}
+
+// ═══ CREATE ═══
+function toggleCreate() {
+    document.getElementById('createToggle').classList.toggle('open');
+    document.getElementById('createBody').classList.toggle('open');
+}
+
+async function startPipeline() {
+    const name = document.getElementById('fName').value.trim();
+    const style = document.getElementById('fStyle').value.trim();
+    const family = document.getElementById('fFamily').value.trim();
+    if (!name || !style) return toast('Nhap ten font va style prompt!', 'error');
+
+    const skip = [];
+    if (document.getElementById('sk1').checked) skip.push('generate');
+    if (document.getElementById('sk2').checked) skip.push('process');
+    if (document.getElementById('sk3').checked) skip.push('assemble');
+    if (document.getElementById('sk4').checked) skip.push('qa');
+    if (document.getElementById('sk5').checked) skip.push('mockup');
+
+    document.getElementById('btnRun').disabled = true;
+    const r = await fetch('/api/run', {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({name, style, family: family||null, skip})
+    });
+    const d = await r.json();
+    document.getElementById('btnRun').disabled = false;
+
+    if (d.error) return toast(d.error, 'error');
+    toast(`Pipeline started: ${name}`);
+    startPolling(name);
+    setTimeout(loadFonts, 1000);
+}
+
+function startPolling(name) {
+    if (pollers[name]) return;
+    pollers[name] = {stage:'starting', interval: null};
+    pollers[name].interval = setInterval(async () => {
+        const r = await fetch(`/api/run/${name}/status`);
+        const d = await r.json();
+        if (!pollers[name]) return;
+        pollers[name].stage = d.stage;
+
+        if (d.status === 'done' || d.status === 'error') {
+            clearInterval(pollers[name].interval);
+            delete pollers[name];
+            toast(d.status === 'done' ? `${name} hoan thanh!` : `${name}: ${d.error}`, d.status === 'done' ? 'success' : 'error');
+            loadAll();
+        }
+    }, 3000);
+}
+
+// ═══ DETAIL MODAL ═══
+async function openDetail(name) {
+    currentDetail = name;
+    const [fontRes, statusRes] = await Promise.all([
+        fetch(`/api/fonts/${name}`),
+        fetch(`/api/run/${name}/status`)
+    ]);
+    const data = await fontRes.json();
+    const status = await statusRes.json();
+
+    document.getElementById('mTitle').textContent = name;
+    const fontData = allFonts.find(f => f.name === name) || {};
+    const isRunning = fontData.is_running || pollers[name];
+    const badgeCls = isRunning ? 'badge-running' : `badge-${fontData.stage||'empty'}`;
+    document.getElementById('mBadge').innerHTML = `<span class="badge ${badgeCls}">${isRunning ? (pollers[name]?.stage||'running') : (fontData.stage||'empty')}</span>`;
+
+    // Build tabs
+    const tabs = [];
+    if (data.preview_font) tabs.push({id:'preview', label:'Preview', count:null});
+    tabs.push({id:'glyphs', label:'Glyphs', count: data.files.images.length});
+    if (data.files.mockups.length) tabs.push({id:'mockups', label:'Mockups', count: data.files.mockups.length});
+    if (data.files.specimens.length) tabs.push({id:'specimens', label:'Specimens', count: data.files.specimens.length});
+    tabs.push({id:'files', label:'Files', count: Object.values(data.files).flat().length});
+    if (status.status !== 'idle') tabs.push({id:'log', label:'Log', count: null});
+
+    const tabsEl = document.getElementById('mTabs');
+    tabsEl.innerHTML = tabs.map((t, i) =>
+        `<button class="tab-btn ${i===0?'active':''}" data-tab="${t.id}" onclick="switchTab('${t.id}')">${t.label}${t.count!==null?`<span class="tab-count">${t.count}</span>`:''}</button>`
+    ).join('');
+
+    // Build tab panels
+    const body = document.getElementById('mBody');
+    let html = '';
+
+    // ── Preview Tab
+    if (data.preview_font) {
+        html += `<div class="tab-panel ${tabs[0].id==='preview'?'active':''}" id="tp-preview">
+            <style>@font-face { font-family: 'PreviewFont'; src: url('${data.preview_font}'); }</style>
+            <div class="preview-controls">
+                <input type="text" id="previewInput" value="THE QUICK BROWN FOX" oninput="updatePreview()" placeholder="Nhap text de preview...">
+                <div class="size-slider">
+                    <span>Size:</span>
+                    <input type="range" min="24" max="120" value="64" id="previewSize" oninput="updatePreview()">
+                    <span id="previewSizeVal">64px</span>
+                </div>
+            </div>
+            <div class="live-preview" id="livePreview">
+                <div class="preview-text" style="font-family:'PreviewFont',serif">THE QUICK BROWN FOX</div>
+                <div class="preview-alpha" style="font-family:'PreviewFont',serif">ABCDEFGHIJKLMNOPQRSTUVWXYZ</div>
+                <div class="preview-alpha" style="font-family:'PreviewFont',serif;font-size:28px;margin-top:12px">0123456789 .,;:!?&@#</div>
+            </div>
+        </div>`;
+    }
+
+    // ── Glyphs Tab
+    const glyphActive = !data.preview_font ? 'active' : '';
+    html += `<div class="tab-panel ${glyphActive}" id="tp-glyphs">`;
+    if (data.files.images.length) {
+        html += '<div class="glyph-grid">';
+        data.files.images.forEach(f => {
+            const label = f.name.replace('.png','');
+            html += `<div class="glyph-cell"><img src="${f.url}" loading="lazy"><span class="label">${label}</span></div>`;
+        });
+        html += '</div>';
+    }
+    if (data.files.svgs.length) {
+        html += `<h3 style="margin:20px 0 12px;font-size:13px;color:var(--text3);font-weight:600">SVG Vectors (${data.files.svgs.length})</h3>`;
+        html += '<div class="glyph-grid">';
+        data.files.svgs.forEach(f => {
+            const label = f.name.replace('.svg','');
+            html += `<div class="glyph-cell" style="background:#fff"><img src="${f.url}" loading="lazy"><span class="label" style="color:#999">${label}</span></div>`;
+        });
+        html += '</div>';
+    }
+    if (!data.files.images.length && !data.files.svgs.length) {
+        html += '<div class="empty-msg" style="padding:60px 0"><p>Chua co glyph nao — chay Generate truoc</p></div>';
+    }
+    html += '</div>';
+
+    // ── Mockups Tab
+    if (data.files.mockups.length) {
+        html += `<div class="tab-panel" id="tp-mockups"><div class="mockup-gallery">`;
+        data.files.mockups.forEach(f => {
+            html += `<div class="mockup-item"><img src="${f.url}" loading="lazy"></div>`;
+        });
+        html += '</div></div>';
+    }
+
+    // ── Specimens Tab
+    if (data.files.specimens.length) {
+        html += `<div class="tab-panel" id="tp-specimens">`;
+        data.files.specimens.forEach(f => {
+            html += `<img src="${f.url}" style="width:100%;border-radius:var(--radius);border:1px solid var(--border);margin-bottom:12px">`;
+        });
+        html += '</div>';
+    }
+
+    // ── Files Tab
+    html += `<div class="tab-panel" id="tp-files">`;
+    for (const [section, files] of Object.entries(data.files)) {
+        if (!files.length) continue;
+        html += `<h3 style="margin:0 0 8px;font-size:12px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:1px;${section!=='images'?'margin-top:16px;':''}">${section}</h3>`;
+        html += '<div class="file-list">';
+        files.forEach(f => {
+            const ext = f.name.split('.').pop();
+            html += `<div class="file-row">
+                <div><span class="file-name"><span class="file-ext">.${ext}</span> ${f.name}</span></div>
+                <div class="file-actions">
+                    <span class="file-size">${f.size}</span>
+                    <a href="${f.url}" download class="btn btn-ghost btn-sm" onclick="event.stopPropagation()">Download</a>
+                </div>
+            </div>`;
+        });
+        html += '</div>';
+    }
+    html += `<div style="margin-top:20px;display:flex;gap:8px">
+        <button class="btn btn-danger btn-sm" onclick="deleteFont('${name}')">Xoa Font</button>
+    </div>`;
+    html += '</div>';
+
+    // ── Log Tab
+    if (status.status !== 'idle') {
+        html += `<div class="tab-panel" id="tp-log">
+            <div style="margin-bottom:12px;font-size:13px;color:var(--text2)">
+                Status: <span class="badge badge-${status.status==='running'?'running':status.status==='done'?'done':'empty'}">${status.status}</span>
+                &nbsp; Elapsed: ${status.elapsed}s
+            </div>
+            <div class="terminal" id="logTerminal">
+                ${status.log.map(l => `<div class="line ${l.startsWith('ERROR')?'err':''}">${escHtml(l)}</div>`).join('')}
+                ${status.status==='running'?'<span class="cursor"></span>':''}
+            </div>
+        </div>`;
+    }
+
+    body.innerHTML = html;
+    document.getElementById('modal').classList.add('active');
+
+    // Poll log
+    if (status.status === 'running' || pollers[name]) {
+        const logPoll = setInterval(async () => {
+            if (!document.getElementById('modal').classList.contains('active') || currentDetail !== name) {
+                clearInterval(logPoll);
+                return;
+            }
+            const r2 = await fetch(`/api/run/${name}/status`);
+            const s2 = await r2.json();
+            const term = document.getElementById('logTerminal');
+            if (term) {
+                term.innerHTML = s2.log.map(l => `<div class="line ${l.startsWith('ERROR')?'err':''}">${escHtml(l)}</div>`).join('') + (s2.status==='running'?'<span class="cursor"></span>':'');
+                term.scrollTop = term.scrollHeight;
+            }
+        }, 2000);
+    }
+}
+
+function switchTab(id) {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === id));
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.toggle('active', p.id === `tp-${id}`));
+}
+
+function updatePreview() {
+    const text = document.getElementById('previewInput').value || 'ABC';
+    const size = document.getElementById('previewSize').value;
+    document.getElementById('previewSizeVal').textContent = size + 'px';
+    const el = document.querySelector('.live-preview .preview-text');
+    if (el) { el.textContent = text; el.style.fontSize = size + 'px'; }
+}
+
+function closeModal() {
+    document.getElementById('modal').classList.remove('active');
+    currentDetail = null;
+}
+
+// ═══ ACTIONS ═══
+async function deleteFont(name) {
+    if (!confirm(`Xoa font "${name}" va tat ca files?`)) return;
+    await fetch(`/api/fonts/${name}/delete`, {method:'POST'});
+    toast(`Da xoa ${name}`);
+    closeModal();
+    loadAll();
+}
+
+// ═══ UTILS ═══
+function escHtml(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+function toast(msg, type='success') {
+    const el = document.createElement('div');
+    el.className = `toast toast-${type}`;
+    el.innerHTML = `${type==='success'?'&#10003;':'&#10007;'} ${escHtml(msg)}`;
+    document.getElementById('toasts').appendChild(el);
+    setTimeout(() => { el.style.opacity = '0'; el.style.transition = 'opacity .3s'; setTimeout(() => el.remove(), 300); }, 4000);
+}
+
+// Keyboard
+document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') closeModal();
+});
+
+init();
+</script>
 </body>
 </html>
