@@ -1,26 +1,21 @@
 """Stage 1: Generate letter images using Gemini Flash image generation.
 
-Two modes:
-  A) Reference-based: analyze folder → master prompt → generate all letters
-  B) Direct prompt: manual style prompt (legacy, backward-compatible)
-
-Uses gemini-2.0-flash-exp-image-generation via generate_content() with IMAGE modality.
+Uses gemini-3.1-flash-image-preview via REST API (same as tony-ai-art).
+Supports reference image mode and direct prompt mode.
 """
 import base64
-import io
 import json
 import os
 import time
 from pathlib import Path
 
-from google import genai
-from google.genai import types
+import requests
 from rich.console import Console
 from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn
 
 from config.settings import (
-    GEMINI_API_KEY, GEMINI_IMAGE_MODEL, CHARSET, UPPERCASE, DIGITS,
-    IMAGE_SIZE, OUTPUT_DIR
+    GEMINI_API_KEY, GEMINI_IMAGE_MODEL, GEMINI_API_URL,
+    CHARSET, UPPERCASE, DIGITS, OUTPUT_DIR
 )
 from scripts.analyze import (
     analyze_references, build_letter_prompt, encode_image,
@@ -45,14 +40,52 @@ def get_simple_prompt(letter: str, style: str) -> str:
     )
 
 
-def extract_image_from_response(response) -> bytes | None:
-    """Extract image bytes from Gemini generate_content response."""
-    if not response or not response.candidates:
-        return None
+def gemini_generate_image(prompt: str, api_key: str, ref_image: tuple | None = None) -> bytes | None:
+    """Call Gemini REST API to generate image. Same pattern as tony-ai-art.
 
-    for part in response.candidates[0].content.parts:
-        if part.inline_data and part.inline_data.mime_type.startswith("image/"):
-            return part.inline_data.data
+    Args:
+        prompt: Text prompt
+        api_key: Gemini API key
+        ref_image: Optional (base64_data, mime_type) for reference-based generation
+
+    Returns:
+        Image bytes or None
+    """
+    model = GEMINI_IMAGE_MODEL
+    url = f"{GEMINI_API_URL}/{model}:generateContent?key={api_key}"
+
+    # Build parts — reference image first (if any), then text
+    parts = []
+    if ref_image:
+        b64_data, mime_type = ref_image
+        parts.append({"inlineData": {"mimeType": mime_type, "data": b64_data}})
+    parts.append({"text": prompt})
+
+    payload = {
+        "contents": [{"parts": parts}],
+        "generationConfig": {
+            "responseModalities": ["IMAGE", "TEXT"],
+        },
+    }
+
+    resp = requests.post(url, json=payload, headers={"Content-Type": "application/json"}, timeout=120)
+
+    if not resp.ok:
+        err = resp.text[:300]
+        raise Exception(f"Gemini API error {resp.status_code}: {err}")
+
+    data = resp.json()
+
+    # Check blocked
+    if data.get("promptFeedback", {}).get("blockReason"):
+        raise Exception(f"Gemini blocked: {data['promptFeedback']['blockReason']}")
+
+    # Extract image from response
+    for candidate in data.get("candidates", []):
+        for part in candidate.get("content", {}).get("parts", []):
+            if part.get("inlineData", {}).get("data"):
+                img_b64 = part["inlineData"]["data"]
+                return base64.b64decode(img_b64)
 
     return None
 
@@ -91,6 +124,7 @@ def generate_font_images(
 
     # ── Mode A: Reference-based (analyze → template → generate)
     master_prompt = None
+    ref_image = None  # Single ref image (b64, mime) for Gemini
 
     if ref_dir or analysis:
         if not analysis:
@@ -101,10 +135,21 @@ def generate_font_images(
         console.print(f"[green]Using style: {analysis.get('style_name_en', 'analyzed')}[/green]")
         console.print(f"[dim]Material: {analysis.get('material_keyword')} | Mood: {analysis.get('mood_keyword')}[/dim]")
 
-    client = genai.Client(api_key=GEMINI_API_KEY)
+        # Load first reference image for visual guidance (same as tony-ai-art: 1 ref best)
+        if ref_dir:
+            ref_path = Path(ref_dir)
+            for ext in ["*.png", "*.jpg", "*.jpeg", "*.webp"]:
+                for f in sorted(ref_path.glob(ext))[:1]:
+                    b64, mime = encode_image(f)
+                    ref_image = (b64, mime)
+                    console.print(f"[dim]Reference image: {f.name}[/dim]")
+                    break
+                if ref_image:
+                    break
+
     failed = []
 
-    console.print(f"[dim]Model: {GEMINI_IMAGE_MODEL}[/dim]")
+    console.print(f"[dim]Model: {GEMINI_IMAGE_MODEL} (REST API)[/dim]")
 
     with Progress(
         SpinnerColumn(),
@@ -137,22 +182,9 @@ def generate_font_images(
 
             for attempt in range(retries + 1):
                 try:
-                    # Generate with Gemini Flash (image generation)
-                    response = client.models.generate_content(
-                        model=GEMINI_IMAGE_MODEL,
-                        contents=prompt,
-                        config=types.GenerateContentConfig(
-                            response_modalities=["TEXT", "IMAGE"],
-                            temperature=1.0,
-                        ),
-                    )
-
-                    img_data = extract_image_from_response(response)
+                    img_data = gemini_generate_image(prompt, GEMINI_API_KEY, ref_image)
 
                     if img_data:
-                        # Decode base64 if needed
-                        if isinstance(img_data, str):
-                            img_data = base64.b64decode(img_data)
                         filepath.write_bytes(img_data)
                         success = True
                         break
@@ -173,7 +205,7 @@ def generate_font_images(
                 failed.append(char)
 
             progress.advance(task)
-            time.sleep(0.5)  # Small delay to avoid rate limits
+            time.sleep(0.5)
 
     if failed:
         console.print(f"[red]Failed characters: {failed}[/red]")
