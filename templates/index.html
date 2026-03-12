@@ -758,8 +758,155 @@
         }
         @keyframes blink { 50% { opacity: 0; } }
 
+        /* ═══ BOTTOM PANEL ═══ */
+        .bottom-panel {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            z-index: 80;
+            background: var(--surface);
+            border-top: 1px solid var(--border);
+            transition: transform .3s ease;
+        }
+        .bottom-panel.collapsed .bp-body { max-height: 0; }
+        .bottom-panel.collapsed .bp-toggle-arrow { transform: rotate(180deg); }
+        .bp-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 8px 24px;
+            cursor: pointer;
+            user-select: none;
+        }
+        .bp-header:hover { background: var(--surface2); }
+        .bp-title {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            color: var(--text2);
+        }
+        .bp-title .bp-count {
+            background: var(--accent);
+            color: #fff;
+            padding: 1px 7px;
+            border-radius: 8px;
+            font-size: 10px;
+            min-width: 18px;
+            text-align: center;
+        }
+        .bp-title .bp-count.zero { background: var(--surface3); color: var(--text3); }
+        .bp-right { display: flex; align-items: center; gap: 12px; }
+        .bp-toggle-arrow { color: var(--text3); font-size: 14px; transition: transform .3s; }
+
+        .bp-body {
+            max-height: 280px;
+            overflow-y: auto;
+            transition: max-height .3s ease;
+        }
+
+        /* Job rows */
+        .bp-jobs { padding: 0 24px 8px; }
+        .bp-job {
+            display: grid;
+            grid-template-columns: 180px 1fr 100px 80px;
+            align-items: center;
+            gap: 16px;
+            padding: 10px 0;
+            border-bottom: 1px solid var(--border);
+            font-size: 12px;
+        }
+        .bp-job:last-child { border-bottom: none; }
+        .bp-job-name { font-weight: 600; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .bp-job-pipeline { display: flex; align-items: center; gap: 2px; }
+        .bp-pipe {
+            flex: 1;
+            height: 20px;
+            border-radius: 3px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 9px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text3);
+            background: var(--surface2);
+            position: relative;
+            overflow: hidden;
+        }
+        .bp-pipe.done { background: var(--green-bg); color: var(--green); }
+        .bp-pipe.active {
+            background: var(--accent-glow);
+            color: var(--accent2);
+            border: 1px solid var(--accent);
+        }
+        .bp-pipe.active::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(90deg, transparent, rgba(99,102,241,.2), transparent);
+            animation: shimmer 1.5s infinite;
+        }
+        @keyframes shimmer { 0% { transform: translateX(-100%); } 100% { transform: translateX(100%); } }
+        .bp-job-time { color: var(--text3); text-align: right; font-variant-numeric: tabular-nums; }
+        .bp-job-status { text-align: right; }
+
+        /* Log section */
+        .bp-log-section { border-top: 1px solid var(--border); }
+        .bp-log-header {
+            padding: 6px 24px;
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--text3);
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .bp-log-header:hover { background: var(--surface2); }
+        .bp-log {
+            background: #0c0c0c;
+            margin: 0 12px 8px;
+            border-radius: 6px;
+            padding: 10px 14px;
+            font-family: 'SF Mono', 'Fira Code', Monaco, monospace;
+            font-size: 11px;
+            line-height: 1.6;
+            color: #4ade80;
+            max-height: 140px;
+            overflow-y: auto;
+        }
+        .bp-log .l { white-space: pre-wrap; }
+        .bp-log .l.err { color: var(--red); }
+        .bp-log .cur {
+            display: inline-block;
+            width: 7px;
+            height: 12px;
+            background: #4ade80;
+            animation: blink 1s step-end infinite;
+            vertical-align: middle;
+        }
+
+        /* No jobs state */
+        .bp-empty {
+            padding: 16px 24px;
+            text-align: center;
+            font-size: 12px;
+            color: var(--text3);
+        }
+
+        /* Add bottom padding to main so content not hidden behind panel */
+        .main { padding-bottom: 80px !important; }
+
         /* ═══ TOAST ═══ */
-        .toast-container { position: fixed; bottom: 24px; right: 24px; z-index: 200; display: flex; flex-direction: column; gap: 8px; }
+        .toast-container { position: fixed; bottom: 60px; right: 24px; z-index: 200; display: flex; flex-direction: column; gap: 8px; }
         .toast {
             padding: 14px 20px;
             border-radius: var(--radius-sm);
@@ -941,6 +1088,27 @@
     </div>
 </div>
 
+<!-- ═══ BOTTOM PIPELINE PANEL ═══ -->
+<div class="bottom-panel" id="bottomPanel">
+    <div class="bp-header" onclick="toggleBottom()">
+        <div class="bp-title">
+            Pipeline Queue <span class="bp-count zero" id="bpCount">0</span>
+        </div>
+        <div class="bp-right">
+            <span class="bp-toggle-arrow">&#9650;</span>
+        </div>
+    </div>
+    <div class="bp-body" id="bpBody">
+        <div class="bp-jobs" id="bpJobs">
+            <div class="bp-empty">Khong co job nao dang chay</div>
+        </div>
+        <div class="bp-log-section" id="bpLogSection" style="display:none">
+            <div class="bp-log-header" onclick="toggleBpLog()">Log Output <span id="bpLogFont">—</span></div>
+            <div class="bp-log" id="bpLog"></div>
+        </div>
+    </div>
+</div>
+
 <!-- Toast container -->
 <div class="toast-container" id="toasts"></div>
 
@@ -960,8 +1128,10 @@ const STAGE_LABELS = {generate:'Gen',process:'Process',assemble:'Build',qa:'QA',
 // ═══ INIT ═══
 async function init() {
     await Promise.all([loadStats(), loadPrompts(), loadFonts()]);
+    updateBottomPanel();
     setInterval(loadStats, 8000);
     setInterval(loadFonts, 6000);
+    setInterval(updateBottomPanel, 3000);
 
     // Filter clicks
     document.querySelectorAll('.filter-chip').forEach(c => {
@@ -1518,6 +1688,146 @@ async function deleteFont(name) {
     toast(`Da xoa ${name}`);
     closeModal();
     loadAll();
+}
+
+// ═══ BOTTOM PANEL ═══
+let bpCollapsed = false;
+let bpLogVisible = true;
+let bpSelectedJob = null;
+
+function toggleBottom() {
+    bpCollapsed = !bpCollapsed;
+    document.getElementById('bottomPanel').classList.toggle('collapsed', bpCollapsed);
+}
+function toggleBpLog() {
+    bpLogVisible = !bpLogVisible;
+    document.getElementById('bpLog').style.display = bpLogVisible ? '' : 'none';
+}
+
+async function updateBottomPanel() {
+    // Gather all jobs: running pollers + recent done/error from allFonts
+    const jobNames = new Set(Object.keys(pollers));
+
+    // Also check server for any running jobs we don't know about
+    for (const f of allFonts) {
+        if (f.is_running) jobNames.add(f.name);
+    }
+
+    // Fetch status for all known jobs
+    const jobStatuses = [];
+    for (const name of jobNames) {
+        try {
+            const r = await fetch(`/api/run/${name}/status`);
+            const s = await r.json();
+            if (s.status !== 'idle') {
+                jobStatuses.push({name, ...s});
+            }
+        } catch(e) {}
+    }
+
+    // Also add recently completed (last 60s)
+    for (const f of allFonts) {
+        if (!jobNames.has(f.name) && f.stage === 'done') {
+            // Check if server has status
+            try {
+                const r = await fetch(`/api/run/${f.name}/status`);
+                const s = await r.json();
+                if (s.status === 'done' && s.elapsed < 300) {
+                    jobStatuses.push({name: f.name, ...s});
+                }
+            } catch(e) {}
+        }
+    }
+
+    // Sort: running first, then by elapsed desc
+    jobStatuses.sort((a,b) => {
+        if (a.status === 'running' && b.status !== 'running') return -1;
+        if (b.status === 'running' && a.status !== 'running') return 1;
+        return b.elapsed - a.elapsed;
+    });
+
+    const runningCount = jobStatuses.filter(j => j.status === 'running').length;
+    const countEl = document.getElementById('bpCount');
+    countEl.textContent = jobStatuses.length;
+    countEl.className = `bp-count ${jobStatuses.length === 0 ? 'zero' : ''}`;
+
+    const jobsEl = document.getElementById('bpJobs');
+
+    if (jobStatuses.length === 0) {
+        jobsEl.innerHTML = '<div class="bp-empty">Khong co job nao dang chay</div>';
+        document.getElementById('bpLogSection').style.display = 'none';
+        return;
+    }
+
+    const PIPE_STAGES = ['analyze','generate','process','assemble','qa','mockup'];
+    const PIPE_LABELS = {analyze:'Analyze',generate:'Generate',process:'Process',assemble:'Build',qa:'QA',mockup:'Mockup'};
+
+    let html = '';
+    for (const job of jobStatuses) {
+        const isRunning = job.status === 'running';
+        const isDone = job.status === 'done';
+        const isError = job.status === 'error';
+
+        // Pipeline steps
+        let pipeHtml = '';
+        const activeIdx = PIPE_STAGES.indexOf(job.stage);
+        PIPE_STAGES.forEach((s, i) => {
+            let cls = '';
+            if (isDone) cls = 'done';
+            else if (isRunning && i < activeIdx) cls = 'done';
+            else if (isRunning && i === activeIdx) cls = 'active';
+            pipeHtml += `<div class="bp-pipe ${cls}">${PIPE_LABELS[s]}</div>`;
+        });
+
+        // Time
+        const mins = Math.floor(job.elapsed / 60);
+        const secs = Math.floor(job.elapsed % 60);
+        const timeStr = mins > 0 ? `${mins}m ${secs}s` : `${secs}s`;
+
+        // Status badge
+        let statusHtml = '';
+        if (isRunning) statusHtml = `<span class="badge badge-running">${job.stage}</span>`;
+        else if (isDone) statusHtml = '<span class="badge badge-done">done</span>';
+        else if (isError) statusHtml = '<span class="badge badge-empty">error</span>';
+
+        const selected = bpSelectedJob === job.name ? 'style="background:var(--surface2)"' : '';
+
+        html += `<div class="bp-job" ${selected} onclick="selectBpJob('${job.name}')">
+            <div class="bp-job-name">${job.name}</div>
+            <div class="bp-job-pipeline">${pipeHtml}</div>
+            <div class="bp-job-time">${timeStr}</div>
+            <div class="bp-job-status">${statusHtml}</div>
+        </div>`;
+    }
+    jobsEl.innerHTML = html;
+
+    // Auto-select first running job for log
+    if (!bpSelectedJob || !jobStatuses.find(j => j.name === bpSelectedJob)) {
+        const running = jobStatuses.find(j => j.status === 'running');
+        bpSelectedJob = running ? running.name : jobStatuses[0].name;
+    }
+
+    // Show log for selected job
+    const selectedStatus = jobStatuses.find(j => j.name === bpSelectedJob);
+    const logSection = document.getElementById('bpLogSection');
+    const logEl = document.getElementById('bpLog');
+    const logFont = document.getElementById('bpLogFont');
+
+    if (selectedStatus && selectedStatus.log && selectedStatus.log.length) {
+        logSection.style.display = '';
+        logFont.textContent = bpSelectedJob;
+        logEl.innerHTML = selectedStatus.log.map(l =>
+            `<div class="l ${l.startsWith('ERROR')?'err':''}">${escHtml(l)}</div>`
+        ).join('') + (selectedStatus.status === 'running' ? '<span class="cur"></span>' : '');
+        logEl.scrollTop = logEl.scrollHeight;
+    } else {
+        logSection.style.display = 'none';
+    }
+}
+
+function selectBpJob(name) {
+    bpSelectedJob = name;
+    updateBottomPanel();
 }
 
 // ═══ UTILS ═══
