@@ -1,0 +1,25 @@
+# AI Generation
+google-genai>=1.0.0
+
+# Image Processing
+rembg[gpu]
+Pillow>=10.0
+onnxruntime
+
+# Vectorization (vtracer via CLI, install separately)
+# cargo install vtracer
+
+# Font Building
+fonttools>=4.50
+fontforge  # system package: brew install fontforge
+
+# QA
+fontbakery>=0.12
+
+# Listing APIs
+requests
+python-dotenv
+
+# CLI
+click>=8.0
+rich>=13.0
