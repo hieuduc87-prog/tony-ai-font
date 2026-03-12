@@ -1,21 +1,25 @@
-"""Stage 1: Generate letter images using analyzed style template.
+"""Stage 1: Generate letter images using Gemini Flash image generation.
 
 Two modes:
   A) Reference-based: analyze folder → master prompt → generate all letters
   B) Direct prompt: manual style prompt (legacy, backward-compatible)
+
+Uses gemini-2.0-flash-exp-image-generation via generate_content() with IMAGE modality.
 """
 import base64
+import io
 import json
 import os
 import time
 from pathlib import Path
 
 from google import genai
+from google.genai import types
 from rich.console import Console
 from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn
 
 from config.settings import (
-    GEMINI_API_KEY, IMAGEN_MODEL, CHARSET, UPPERCASE, DIGITS,
+    GEMINI_API_KEY, GEMINI_IMAGE_MODEL, CHARSET, UPPERCASE, DIGITS,
     IMAGE_SIZE, OUTPUT_DIR
 )
 from scripts.analyze import (
@@ -25,7 +29,6 @@ from scripts.analyze import (
 
 console = Console()
 
-# Characters to generate (uppercase + digits first)
 DEFAULT_CHARSET = UPPERCASE + DIGITS
 
 
@@ -33,13 +36,25 @@ def get_simple_prompt(letter: str, style: str) -> str:
     """Build simple prompt (legacy mode, no reference)."""
     interaction = LETTER_INTERACTIONS.get(letter, f"artistic decoration following the letter geometry")
     return (
-        f"A single letter '{letter}' in {style} style. "
+        f"Generate an image of a single letter '{letter}' in {style} style. "
         f"The artistic elements: {interaction}. "
         f"Isolated on pure white background, centered, square composition, "
         f"high detail, the letter must be clearly readable. "
         f"ONLY the letter '{letter}', no other text or characters."
         f"\n\n{FONT_KNOWLEDGE}"
     )
+
+
+def extract_image_from_response(response) -> bytes | None:
+    """Extract image bytes from Gemini generate_content response."""
+    if not response or not response.candidates:
+        return None
+
+    for part in response.candidates[0].content.parts:
+        if part.inline_data and part.inline_data.mime_type.startswith("image/"):
+            return part.inline_data.data
+
+    return None
 
 
 def generate_font_images(
@@ -76,7 +91,6 @@ def generate_font_images(
 
     # ── Mode A: Reference-based (analyze → template → generate)
     master_prompt = None
-    ref_images_b64 = []
 
     if ref_dir or analysis:
         if not analysis:
@@ -87,16 +101,10 @@ def generate_font_images(
         console.print(f"[green]Using style: {analysis.get('style_name_en', 'analyzed')}[/green]")
         console.print(f"[dim]Material: {analysis.get('material_keyword')} | Mood: {analysis.get('mood_keyword')}[/dim]")
 
-        # Load reference images for visual guidance
-        if ref_dir:
-            ref_path = Path(ref_dir)
-            for ext in ["*.png", "*.jpg", "*.jpeg", "*.webp"]:
-                for f in sorted(ref_path.glob(ext))[:3]:  # Max 3 ref images
-                    b64, mime = encode_image(f)
-                    ref_images_b64.append((b64, mime))
-
     client = genai.Client(api_key=GEMINI_API_KEY)
     failed = []
+
+    console.print(f"[dim]Model: {GEMINI_IMAGE_MODEL}[/dim]")
 
     with Progress(
         SpinnerColumn(),
@@ -129,18 +137,22 @@ def generate_font_images(
 
             for attempt in range(retries + 1):
                 try:
-                    # Generate with Imagen 3
-                    response = client.models.generate_images(
-                        model=IMAGEN_MODEL,
-                        prompt=prompt,
-                        config=genai.types.GenerateImagesConfig(
-                            number_of_images=1,
-                            aspect_ratio="1:1",
+                    # Generate with Gemini Flash (image generation)
+                    response = client.models.generate_content(
+                        model=GEMINI_IMAGE_MODEL,
+                        contents=prompt,
+                        config=types.GenerateContentConfig(
+                            response_modalities=["TEXT", "IMAGE"],
+                            temperature=1.0,
                         ),
                     )
 
-                    if response.generated_images:
-                        img_data = response.generated_images[0].image.image_bytes
+                    img_data = extract_image_from_response(response)
+
+                    if img_data:
+                        # Decode base64 if needed
+                        if isinstance(img_data, str):
+                            img_data = base64.b64decode(img_data)
                         filepath.write_bytes(img_data)
                         success = True
                         break
@@ -149,18 +161,19 @@ def generate_font_images(
 
                 except Exception as e:
                     err_msg = str(e)
-                    if "429" in err_msg or "quota" in err_msg.lower():
-                        console.print(f"[yellow]Rate limited, waiting 10s...[/yellow]")
-                        time.sleep(10)
+                    if "429" in err_msg or "quota" in err_msg.lower() or "rate" in err_msg.lower():
+                        wait = 15 * (attempt + 1)
+                        console.print(f"[yellow]Rate limited, waiting {wait}s...[/yellow]")
+                        time.sleep(wait)
                     else:
                         console.print(f"[yellow]Error '{char}' attempt {attempt+1}: {e}[/yellow]")
-
-                time.sleep(1)  # Small delay between calls
+                        time.sleep(2)
 
             if not success:
                 failed.append(char)
 
             progress.advance(task)
+            time.sleep(0.5)  # Small delay to avoid rate limits
 
     if failed:
         console.print(f"[red]Failed characters: {failed}[/red]")

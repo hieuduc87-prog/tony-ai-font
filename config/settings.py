@@ -34,9 +34,9 @@ STRAIGHT_CHARS = set("BDEFHIJKLMNPRU")
 ROUND_CHARS = set("CDGOQSU")
 DIAGONAL_CHARS = set("AVWXYZ")
 
-# Imagen 3 API
+# Gemini API
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
-IMAGEN_MODEL = "imagen-3.0-generate-002"
+GEMINI_IMAGE_MODEL = os.getenv("GEMINI_IMAGE_MODEL", "gemini-2.0-flash-exp-image-generation")
 
 # APIs
 GUMROAD_ACCESS_TOKEN = os.getenv("GUMROAD_ACCESS_TOKEN", "")
